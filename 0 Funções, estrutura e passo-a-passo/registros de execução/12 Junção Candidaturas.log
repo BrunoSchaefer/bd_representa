@@ -2,7 +2,7 @@ here() starts at <raiz do projeto>
 ── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
 ✔ dplyr     1.2.0     ✔ readr     2.1.6
 ✔ forcats   1.0.1     ✔ stringr   1.6.0
-✔ ggplot2   4.0.2     ✔ tibble    3.3.1
+✔ ggplot2   4.0.3     ✔ tibble    3.3.1
 ✔ lubridate 1.9.5     ✔ tidyr     1.3.2
 ✔ purrr     1.2.1     
 ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
@@ -25,6 +25,16 @@ O seguinte objeto é mascarado por 'package:purrr':
 
     transpose
 
+Candidaturas: 114 chaves repetidas removidas
+# A tibble: 6 × 5
+    ano cargo              sigla_uf numero_candidato     n
+  <int> <chr>              <chr>    <chr>            <int>
+1  2026 deputado distrital DF       10111                2
+2  2026 deputado estadual  AC       23555                2
+3  2026 deputado estadual  AC       55444                2
+4  2026 deputado estadual  AM       30000                2
+5  2026 deputado estadual  AM       40222                2
+6  2026 deputado estadual  AM       44133                2
 Resultados 1º turno: 1 chaves repetidas removidas
 # A tibble: 1 × 5
     ano cargo             sigla_uf numero_candidato     n
@@ -32,7 +42,7 @@ Resultados 1º turno: 1 chaves repetidas removidas
 1  2014 deputado estadual BA       20111                2
 
 === Eleições gerais ===
-# A tibble: 24 × 12
+# A tibble: 30 × 12
      ano cargo              candidaturas com_votos com_bens com_financ
    <int> <chr>                     <int>     <dbl>    <dbl>      <dbl>
  1  2010 deputado distrital          798     100       63.2       86.7
@@ -59,38 +69,50 @@ Resultados 1º turno: 1 chaves repetidas removidas
 22  2022 governador                  202     100       88.1      100  
 23  2022 presidente                   11     100      100        100  
 24  2022 senador                     206      99.5     90.8      100  
+25  2026 deputado distrital          412     100       66.7       98.8
+26  2026 deputado estadual         10428     100       66.4       98.9
+27  2026 deputado federal           7051     100       69.6       99.1
+28  2026 governador                  169     100       84        100  
+29  2026 presidente                   12     100       91.7      100  
+30  2026 senador                     277     100       86.3      100  
    com_ideologia com_diretorio com_distrito eleitos incumbentes soma_pct_votos
            <dbl>         <dbl>        <dbl>   <int>       <dbl>          <dbl>
- 1           100           0            100      24          14           92.0
- 2           100           0            100    1035         755           90.6
- 3           100           0            100     513         375           91.7
- 4           100           0            100      27          10          100  
- 5           100           0              0       1           0          100  
- 6           100           0            100      54          25          100  
- 7           100           0            100      24          13           94.4
- 8           100           0            100    1035         741           91.6
- 9           100           0            100     513         351           92.4
-10           100           0            100      27          12          100  
-11           100           0              0       1           1          100  
-12           100           0            100      27           8           99.0
-13           100          81.8          100      24          16           94.6
-14           100          89.2          100    1035         732           92.1
-15           100          89.7          100     513         377           93.2
-16           100          93.4          100      27          14           99.9
-17           100          84.6            0       1           0          100  
-18           100          91.6          100      53          29          100  
-19           100          80.2          100      24          19           95.8
-20           100          88.4          100    1035         764           93.6
-21           100          86.9          100     511         421           95.9
-22           100          93.1          100      27          15          100  
-23           100          72.7            0       1           1          100  
-24           100          83.5          100      27          11          100  
-Salvo: candidaturas_presidente - 44 linhas
-Salvo: candidaturas_governador - 697 linhas
-Salvo: candidaturas_senador - 894 linhas
-Salvo: candidaturas_deputado_federal - 27841 linhas
-Salvo: candidaturas_deputado_estadual - 57362 linhas
-Salvo: candidaturas_deputado_distrital - 3245 linhas
+ 1         100             0            100      24          14           92.0
+ 2         100             0            100    1035         755           90.6
+ 3         100             0            100     513         375           91.7
+ 4         100             0            100      27          10          100  
+ 5         100             0              0       1           0          100  
+ 6         100             0            100      54          25          100  
+ 7         100             0            100      24          13           94.4
+ 8         100             0            100    1035         741           91.6
+ 9         100             0            100     513         351           92.4
+10         100             0            100      27          12          100  
+11         100             0              0       1           1          100  
+12         100             0            100      27           8           99.0
+13         100            81.8          100      24          16           94.6
+14         100            89.2          100    1035         732           92.1
+15         100            89.7          100     513         377           93.2
+16         100            93.4          100      27          14           99.9
+17         100            84.6            0       1           0          100  
+18         100            91.6          100      53          29          100  
+19         100            80.2          100      24          19           95.8
+20         100            88.4          100    1035         764           93.6
+21         100            86.9          100     511         421           95.9
+22         100            93.1          100      27          15          100  
+23         100            72.7            0       1           1          100  
+24         100            83.5          100      27          11          100  
+25          89.3           0            100      24          20           95.8
+26          94.6           0            100    1035         802           94.0
+27          91.6           0            100     513         402           97.0
+28          92.3           0            100      27           9          100  
+29          83.3           0              0       1           1          100  
+30          95.7           0            100      54          29          100  
+Salvo: candidaturas_presidente - 56 linhas
+Salvo: candidaturas_governador - 866 linhas
+Salvo: candidaturas_senador - 1171 linhas
+Salvo: candidaturas_deputado_federal - 34892 linhas
+Salvo: candidaturas_deputado_estadual - 67790 linhas
+Salvo: candidaturas_deputado_distrital - 3657 linhas
 Candidaturas: 1 chaves repetidas removidas
 # A tibble: 1 × 6
     ano cargo    sigla_uf id_municipio numero_candidato     n

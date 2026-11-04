@@ -34,12 +34,14 @@ Chave: <ano>
 2:  2014    27                          -0.416                       -0.776
 3:  2018    27                          -0.391                       -0.644
 4:  2022    27                          -0.304                       -0.671
+5:  2026    27                          -0.269                       -0.595
    prop_candidatos_negros_camara tem_mulher_governo com_partidos
                            <num>              <int>        <int>
 1:                           NaN                  2            0
 2:                         0.459                  1            0
 3:                         0.472                  1           27
 4:                         0.532                  2           27
+5:                         0.508                  3            0
 
 === bd_distritos_municipal ===
 Chave: <ano>

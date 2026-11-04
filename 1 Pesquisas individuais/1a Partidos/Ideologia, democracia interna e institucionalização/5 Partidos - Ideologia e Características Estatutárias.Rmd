@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Introdução
 
-Este código monta um banco no nível **partido-ano** (2010–2025) com características nacionais dos partidos: ideologia (duas medidas), democracia interna e o índice PSI. O banco é juntado aos bancos de direções e financiamento no código `5_1 Junção Partidos.R`.
+Este código monta um banco no nível **partido-ano** (2010–2026) com características nacionais dos partidos: ideologia (duas medidas), democracia interna e o índice PSI. O banco é juntado aos bancos de direções e financiamento no código `5_1 Junção Partidos.R`.
 
 Todas as fontes usam siglas da época da coleta (PMDB, PR, PRB, PPS etc.). Os bancos de dirigentes e de financiamento usam a sigla atual do partido em todos os anos (MDB, PL, REPUBLICANOS, CIDADANIA...). Por isso as siglas das fontes são convertidas para a sigla atual padronizada (`SG_PARTIDO_PAD`, a mesma usada no código 4).
 
@@ -27,9 +27,9 @@ source(here("0 Funções, estrutura e passo-a-passo", "0_funcoes_auxiliares.R"))
 
 pasta_partidos <- pasta$brutos_partidos
 
-# 2010–2025: cobre as eleições desde 2010 (banco de candidatos) e os
+# 2010–2026: cobre as eleições desde 2010 (banco de candidatos) e os
 # diretórios desde 2015
-anos <- 2010:2025
+anos <- 2010:2026
 
 ```
 

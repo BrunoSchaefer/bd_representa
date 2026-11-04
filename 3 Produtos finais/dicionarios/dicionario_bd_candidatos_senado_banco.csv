@@ -2,9 +2,9 @@ campo;valor
 banco;bd_candidatos_senado
 arquivo;3 Produtos finais/bancos/bd_candidatos_senado.xlsx
 unidade de análise;candidatura a senador (eleições gerais)
-linhas;894
-anos;2010, 2014, 2018, 2022
+linhas;1.171
+anos;2010, 2014, 2018, 2022, 2026
 variáveis;185
 código que produz;3 Produtos finais/15 Produtos finais
 documentação;0 Funções, estrutura e passo-a-passo/0 Estrutura de Montagem do Banco de Dados.Rmd
-gerado em;30/09/2026
+gerado em;04/11/2026

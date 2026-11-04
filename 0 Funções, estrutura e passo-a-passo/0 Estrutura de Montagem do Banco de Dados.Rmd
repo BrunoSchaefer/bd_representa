@@ -129,7 +129,8 @@ _arquivo/          versões antigas (não usadas pelos códigos)
 # Convenções comuns
 
 - **Níveis e distritos.** Nacional: direções nacionais. Estadual: direções estaduais e a regional do DF; distrito = UF. Municipal: direções municipais e as zonais do DF; distrito = município. Como o DF não tem municípios, cada zona eleitoral do DF é tratada como um município nos bancos de direções (com o número da zona no lugar do código do município).
-- **Períodos.** Direções partidárias: 2015–2025. Financiamento partidário: 2017–2025 (2025 incompleto). Eleições gerais: 2010, 2014, 2018 e 2022. Eleições municipais: 2012, 2016, 2020 e 2024. Características dos partidos: 2010–2025. Socioeconômico: 2010–2025.
+- **Períodos.** Direções partidárias: 2015–2025. Financiamento partidário: 2017–2025 (2025 incompleto). Eleições gerais: 2010, 2014, 2018, 2022 e 2026. Eleições municipais: 2012, 2016, 2020 e 2024. Características dos partidos: 2010–2026. Socioeconômico: 2010–2026.
+- **Eleições de 2026 (atualização de 04/11/2026).** Dados da basedosdados (TSE), consulta de 04/11/2026, 1º turno completo. **Situação da candidatura:** a basedosdados ainda não traz `situacao` para 2026 (NA em todas as linhas); considera-se apta a candidatura com votos no 1º turno (em 2022 o critério recupera 99,9% das deferidas a deputado federal, com 0,6% de excesso). **Prestação de contas:** receitas e despesas de 2026 vêm rotuladas como "eleicao geral federal 2026" e "eleicoes gerais estaduais 2026" (incluídas no filtro de eleições ordinárias); ainda podem chegar prestações retificadoras. Valores monetários de 2026 deflacionados a partir do IPCA de 09/2026 (último divulgado) para reais de dez/2025; os anos anteriores, a partir de dezembro de cada ano. Não há dados de direções partidárias de 2026 (arquivo do TSE de 29/11/2025): nas candidaturas e listas de 2026 as variáveis `diretorio_*` e de dirigentes ficam NA. Estimativa populacional de 2026 ainda indisponível (NA); a composição por sexo e cor/raça usa o Censo 2022.
 - **Eleições.** Só eleições ordinárias (a eleição de Macapá de 2020, adiada pelo apagão, é mantida) e 1º turno; o desfecho do 2º turno fica em variáveis próprias.
 - **Chaves.** Partidos: sigla atual padronizada (`SG_PARTIDO_PAD`, função `sigla_atual()`: sem acentos, PMDB = MDB, PR = PL, PRB = REPUBLICANOS etc.). Municípios: código TSE (`CD_MUNICIPIO`, `id_municipio_tse`) nos dados do TSE e código IBGE (`id_municipio`) nos dados da basedosdados; a correspondência vem do código 10. Pessoas: título eleitoral.
 - **Valores monetários.** Deflacionados pelo IPCA de dezembro de 2025, com referência em dezembro do ano (`deflateBR`).
@@ -253,16 +254,16 @@ Bancos em `3 Produtos finais/bancos`; dicionários em `3 Produtos finais/diciona
 | `bd_diretorios_nacional` | ano-partido | 2015–2025 | 336 | `.xlsx` | 14 |
 | `bd_diretorios_estadual` | ano-partido-UF | 2015–2025 | 7.277 | `.xlsx` | 14 |
 | `bd_diretorios_municipal` | ano-partido-município | 2015–2025 | ~720 mil | `.csv` | 14 |
-| `bd_candidatos_governadoria` | candidatura | 2010–2022 (gerais) | 697 | `.xlsx` | 15 |
-| `bd_candidatos_senado` | candidatura | 2010–2022 (gerais) | 894 | `.xlsx` | 15 |
-| `bd_candidatos_camara` | candidatura | 2010–2022 (gerais) | 27.841 | `.xlsx` | 15 |
-| `bd_candidatos_assembleia` | candidatura | 2010–2022 (gerais) | 60.607 | `.xlsx` | 15 |
+| `bd_candidatos_governadoria` | candidatura | 2010–2026 (gerais) | 866 | `.xlsx` | 15 |
+| `bd_candidatos_senado` | candidatura | 2010–2026 (gerais) | 1.171 | `.xlsx` | 15 |
+| `bd_candidatos_camara` | candidatura | 2010–2026 (gerais) | 34.892 | `.xlsx` | 15 |
+| `bd_candidatos_assembleia` | candidatura | 2010–2026 (gerais) | 71.447 | `.xlsx` | 15 |
 | `bd_candidatos_prefeitura` | candidatura | 2012–2024 (municipais) | 63.124 | `.xlsx` | 15 |
 | `bd_candidatos_vereanca` | candidatura | 2012–2024 (municipais) | 1,75 milhão | `.csv` | 15 |
-| `bd_partidos_camara` | ano-partido-UF (deputado federal) | 2010–2022 (gerais) | 2.933 | `.xlsx` | 17 |
-| `bd_partidos_assembleias` | ano-partido-UF (deputado estadual e distrital) | 2010–2022 (gerais) | 2.958 | `.xlsx` | 17 |
+| `bd_partidos_camara` | ano-partido-UF (deputado federal) | 2010–2026 (gerais) | 3.508 | `.xlsx` | 17 |
+| `bd_partidos_assembleias` | ano-partido-UF (deputado estadual e distrital) | 2010–2026 (gerais) | 3.470 | `.xlsx` | 17 |
 | `bd_partidos_vereanca` | ano-partido-município (vereador) | 2012–2024 (municipais) | ~228 mil | `.csv` | 17 |
-| `bd_distritos_estadual` | ano-UF | 2010–2022 (gerais) | 108 | `.xlsx` | 16 |
+| `bd_distritos_estadual` | ano-UF | 2010–2026 (gerais) | 135 | `.xlsx` | 16 |
 | `bd_distritos_municipal` | ano-município | 2012–2024 (municipais) | ~22 mil | `.xlsx` | 16 |
 
 ## Direções partidárias: dirigentes e diretórios (código 14)

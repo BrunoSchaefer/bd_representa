@@ -1,5 +1,10 @@
 bd_representa — Conjunto de bancos de dados sobre partidos e eleições no Brasil
-Bruno Schaefer (IESP-UERJ)
+Bruno Schaefer (IESP-UERJ; MAPE - Laboratório de Monitoramento e Avaliação de Políticas e Eleições, https://mape.org.br/)
+
+Como citar:
+  Schaefer, Bruno. bd_representa: conjunto de bancos de dados sobre partidos e eleições no Brasil.
+  IESP-UERJ, MAPE (Laboratório de Monitoramento e Avaliação de Políticas e Eleições), 2026.
+  Disponível em: https://github.com/BrunoSchaefer/bd_representa.
 
 Por onde começar
   1. Leia o passo-a-passo: "0 Funções, estrutura e passo-a-passo/0 Estrutura de Montagem do Banco de Dados.Rmd"

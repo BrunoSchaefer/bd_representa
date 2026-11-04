@@ -75,3 +75,54 @@
 2026-09-30 15:00:07 | OK     3 Produtos finais/17 Produtos finais - Listas partidárias.R (5.8 min)
 2026-09-30 15:00:07 | INÍCIO 3 Produtos finais/18 Dicionários.R
 2026-09-30 15:09:21 | OK     3 Produtos finais/18 Dicionários.R (9.2 min)
+2026-11-04 14:48:12 | CONCLUÍDO: 
+2026-11-04 14:48:12 | INÍCIO 1 Pesquisas individuais/1a Partidos/Ideologia, democracia interna e institucionalização/5 Partidos - Ideologia e Características Estatutárias.Rmd
+2026-11-04 14:48:22 | OK     1 Pesquisas individuais/1a Partidos/Ideologia, democracia interna e institucionalização/5 Partidos - Ideologia e Características Estatutárias.Rmd (0.2 min)
+2026-11-04 14:48:22 | INÍCIO 1 Pesquisas individuais/2a Eleições/Financiamento eleitoral/6_1 Financiamento Eleitoral Gerais.Rmd
+2026-11-04 14:58:26 | OK     1 Pesquisas individuais/2a Eleições/Financiamento eleitoral/6_1 Financiamento Eleitoral Gerais.Rmd (10.1 min)
+2026-11-04 14:58:26 | INÍCIO 1 Pesquisas individuais/2a Eleições/Características dos candidatos/7_1 Características Candidatos Gerais.Rmd
+2026-11-04 14:59:13 | OK     1 Pesquisas individuais/2a Eleições/Características dos candidatos/7_1 Características Candidatos Gerais.Rmd (0.8 min)
+2026-11-04 14:59:13 | INÍCIO 1 Pesquisas individuais/2a Eleições/Bens/8_1 Bens Gerais.Rmd
+2026-11-04 15:00:54 | OK     1 Pesquisas individuais/2a Eleições/Bens/8_1 Bens Gerais.Rmd (1.7 min)
+2026-11-04 15:00:54 | INÍCIO 1 Pesquisas individuais/2a Eleições/Resultados eleitorais/9_1 Votos e Resultados Gerais.Rmd
+2026-11-04 15:01:22 | OK     1 Pesquisas individuais/2a Eleições/Resultados eleitorais/9_1 Votos e Resultados Gerais.Rmd (0.5 min)
+2026-11-04 15:01:22 | INÍCIO 1 Pesquisas individuais/2a Eleições/Vagas, comparecimento e eleitorado/10_1 Comparecimento, Vagas e Eleitorado Gerais.Rmd
+2026-11-04 15:03:26 | OK     1 Pesquisas individuais/2a Eleições/Vagas, comparecimento e eleitorado/10_1 Comparecimento, Vagas e Eleitorado Gerais.Rmd (2.1 min)
+2026-11-04 15:03:26 | INÍCIO 1 Pesquisas individuais/3a Socioeconômico/11 Informações Socioeconômicas.Rmd
+2026-11-04 15:04:18 | OK     1 Pesquisas individuais/3a Socioeconômico/11 Informações Socioeconômicas.Rmd (0.9 min)
+2026-11-04 15:04:18 | INÍCIO 2 Agregação dos dados/1b Partidos/5_1 Junção Partidos.R
+2026-11-04 15:04:38 | OK     2 Agregação dos dados/1b Partidos/5_1 Junção Partidos.R (0.3 min)
+2026-11-04 15:04:38 | INÍCIO 2 Agregação dos dados/1b Partidos/13 Junção Partidos e Distritos.R
+2026-11-04 15:05:08 | OK     2 Agregação dos dados/1b Partidos/13 Junção Partidos e Distritos.R (0.5 min)
+2026-11-04 15:05:08 | INÍCIO 2 Agregação dos dados/2b Eleições/12 Junção Candidaturas.R
+2026-11-04 15:11:24 | OK     2 Agregação dos dados/2b Eleições/12 Junção Candidaturas.R (6.3 min)
+2026-11-04 15:11:24 | INÍCIO 3 Produtos finais/14 Produtos finais - Partidos.R
+2026-11-04 15:31:57 | OK     3 Produtos finais/14 Produtos finais - Partidos.R (20.6 min)
+2026-11-04 15:31:57 | INÍCIO 3 Produtos finais/15 Produtos finais - Candidatos.R
+2026-11-04 15:39:28 | OK     3 Produtos finais/15 Produtos finais - Candidatos.R (7.5 min)
+2026-11-04 15:39:28 | INÍCIO 3 Produtos finais/16 Produtos finais - Distritos.R
+2026-11-04 15:43:27 | OK     3 Produtos finais/16 Produtos finais - Distritos.R (4 min)
+2026-11-04 15:43:27 | INÍCIO 3 Produtos finais/17 Produtos finais - Listas partidárias.R
+2026-11-04 15:49:18 | OK     3 Produtos finais/17 Produtos finais - Listas partidárias.R (5.8 min)
+2026-11-04 15:49:18 | INÍCIO 3 Produtos finais/18 Dicionários.R
+2026-11-04 16:00:41 | OK     3 Produtos finais/18 Dicionários.R (11.4 min)
+2026-11-04 16:00:41 | CONCLUÍDO: atualização 2026
+2026-11-04 16:11:04 | CONCLUÍDO: 
+2026-11-04 16:11:04 | INÍCIO 1 Pesquisas individuais/2a Eleições/Financiamento eleitoral/6_1 Financiamento Eleitoral Gerais.Rmd
+2026-11-04 16:18:59 | OK     1 Pesquisas individuais/2a Eleições/Financiamento eleitoral/6_1 Financiamento Eleitoral Gerais.Rmd (7.9 min)
+2026-11-04 16:18:59 | INÍCIO 1 Pesquisas individuais/2a Eleições/Características dos candidatos/7_1 Características Candidatos Gerais.Rmd
+2026-11-04 16:19:23 | ERRO   1 Pesquisas individuais/2a Eleições/Características dos candidatos/7_1 Características Candidatos Gerais.Rmd (0.4 min)
+2026-11-04 16:20:07 | CONCLUÍDO: 
+2026-11-04 16:20:07 | INÍCIO 1 Pesquisas individuais/2a Eleições/Características dos candidatos/7_1 Características Candidatos Gerais.Rmd
+2026-11-04 16:20:59 | OK     1 Pesquisas individuais/2a Eleições/Características dos candidatos/7_1 Características Candidatos Gerais.Rmd (0.9 min)
+2026-11-04 16:20:59 | INÍCIO 2 Agregação dos dados/2b Eleições/12 Junção Candidaturas.R
+2026-11-04 16:31:39 | OK     2 Agregação dos dados/2b Eleições/12 Junção Candidaturas.R (10.7 min)
+2026-11-04 16:31:39 | INÍCIO 3 Produtos finais/15 Produtos finais - Candidatos.R
+2026-11-04 16:38:51 | OK     3 Produtos finais/15 Produtos finais - Candidatos.R (7.2 min)
+2026-11-04 16:38:51 | INÍCIO 3 Produtos finais/16 Produtos finais - Distritos.R
+2026-11-04 16:44:41 | OK     3 Produtos finais/16 Produtos finais - Distritos.R (5.8 min)
+2026-11-04 16:44:41 | INÍCIO 3 Produtos finais/17 Produtos finais - Listas partidárias.R
+2026-11-04 16:52:45 | OK     3 Produtos finais/17 Produtos finais - Listas partidárias.R (8.1 min)
+2026-11-04 16:52:45 | INÍCIO 3 Produtos finais/18 Dicionários.R
+2026-11-04 17:03:57 | OK     3 Produtos finais/18 Dicionários.R (11.2 min)
+2026-11-04 17:03:57 | CONCLUÍDO: atualização 2026 (correção situação e tipos de eleição)

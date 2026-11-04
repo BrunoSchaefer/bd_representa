@@ -26,57 +26,65 @@ O seguinte objeto é mascarado por 'package:purrr':
     transpose
 
 
-=== bd_partidos_camara : 2933 listas ===
+=== bd_partidos_camara : 3508 listas ===
      ano listas candidatos pct_cota dri_genero_candidatos dri_genero_receitas
    <int>  <int>      <int>    <num>                 <num>               <num>
 1:  2010    609       4888     25.3                -0.638              -0.761
 2:  2014    768       5870     48.4                -0.450              -0.663
 3:  2018    859       7628     56.3                -0.406              -0.494
 4:  2022    697       9455     93.4                -0.252              -0.278
+5:  2026    575       7051     97.7                -0.231              -0.244
    dri_genero_eleitos dri_racial_candidatos dri_racial_eleitos
                 <num>                 <num>              <num>
 1:             -0.782                   NaN                NaN
 2:             -0.761                -0.174             -0.553
 3:             -0.663                -0.216             -0.508
 4:             -0.659                -0.106             -0.480
+5:             -0.579                -0.131             -0.477
    dirigentes_candidatos com_diretorio
                    <int>         <int>
 1:                     0             0
 2:                     0             0
 3:                   951           759
 4:                   912           609
+5:                     0             0
      ano listas com_governador com_senado com_presidente
    <int>  <int>          <int>      <int>          <int>
 1:  2010    609            143        182            173
 2:  2014    768            151        157            246
 3:  2018    859            178        267            325
 4:  2022    697            188        194            227
+5:  2026    575            147        215            219
 
-=== bd_partidos_assembleias : 2958 listas ===
+=== bd_partidos_assembleias : 3470 listas ===
      ano listas candidatos pct_cota dri_genero_candidatos dri_genero_receitas
    <int>  <int>      <int>    <num>                 <num>               <num>
 1:  2010    660      12609     22.1                -0.605              -0.712
 2:  2014    803      15258     48.7                -0.451              -0.689
 3:  2018    839      16941     59.1                -0.411              -0.434
 4:  2022    656      15799     92.2                -0.313              -0.324
+5:  2026    512      10840     94.5                -0.291              -0.286
    dri_genero_eleitos dri_racial_candidatos dri_racial_eleitos
                 <num>                 <num>              <num>
 1:             -0.766                   NaN                NaN
 2:             -0.762                -0.157             -0.429
 3:             -0.690                -0.161             -0.426
 4:             -0.672                -0.066             -0.340
+5:             -0.664                -0.108             -0.424
    dirigentes_candidatos com_diretorio
                    <int>         <int>
 1:                     0             0
 2:                     0             0
 3:                  1526           744
 4:                  1068           577
+5:                     0             0
      ano listas com_governador com_senado com_presidente
    <int>  <int>          <int>      <int>          <int>
 1:  2010    660            144        186            188
 2:  2014    803            152        158            251
 3:  2018    839            178        262            310
 4:  2022    656            179        191            215
+5:  2026    512            136        199            174
 
 === bd_partidos_vereanca : 228433 listas ===
      ano listas candidatos pct_cota dri_genero_candidatos dri_genero_receitas

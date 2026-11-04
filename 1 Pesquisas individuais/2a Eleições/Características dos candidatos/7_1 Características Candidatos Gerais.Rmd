@@ -10,7 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-Dados das características dos candidatos das eleições gerais (2010, 2014, 2018 e 2022)
+Dados das características dos candidatos das eleições gerais (2010, 2014, 2018, 2022 e 2026)
 
 Por candidato
 
@@ -56,7 +56,7 @@ tipos_ordinarios <- c("eleicao ordinaria", "eleicoes municipais 2020 - ap")
 ```{r}
 
 bd_rec <- basedosdados::bdplyr("basedosdados.br_tse_eleicoes.candidatos") %>%
-  dplyr::filter(ano %in% c(2010, 2014, 2018, 2022), tipo_eleicao %in% tipos_ordinarios) %>%
+  dplyr::filter(ano %in% c(2010, 2014, 2018, 2022, 2026), tipo_eleicao %in% tipos_ordinarios) %>%
   dplyr::select(
     ano, cargo, sigla_uf, tipo_eleicao,
     sequencial,   # identificador da candidatura no TSE (chave para bens e resultados)
@@ -90,6 +90,36 @@ summary(candidatos)
 
 table(candidatos$situacao, useNA = "always")
 
+
+# 2026: a basedosdados (consulta de 04/11/2026) ainda não traz a situação da
+# candidatura (NA em todas as linhas). Aproximação: é considerada apta a
+# candidatura que recebeu votos no 1º turno. Em 2022 esse critério recupera
+# 99,9% das candidaturas deferidas a deputado federal (9.453 de 9.455), com
+# 0,6% de excesso (indeferidas com recurso que chegaram à urna).
+votados_2026 <- basedosdados::bdplyr("basedosdados.br_tse_eleicoes.resultados_candidato") %>%
+  dplyr::filter(ano == 2026, turno == 1) %>%
+  dplyr::select(cargo, sigla_uf, numero_candidato, votos) %>%
+  basedosdados::bd_collect() %>%
+  dplyr::group_by(cargo, sigla_uf, numero_candidato) %>%
+  dplyr::summarise(votos_t1 = sum(as.numeric(votos), na.rm = TRUE), .groups = "drop") %>%
+  dplyr::filter(votos_t1 > 0) %>%
+  dplyr::transmute(cargo,
+                   # presidente: a UF difere entre as fontes; liga só por cargo e número
+                   uf_chave  = if_else(cargo == "presidente", "BR", sigla_uf),
+                   num_chave = as.character(numero_candidato), votado_2026 = TRUE) %>%
+  distinct()
+
+candidatos <- candidatos %>%
+  mutate(uf_chave  = if_else(cargo == "presidente", "BR", sigla_uf),
+         num_chave = as.character(numero),
+         eh_2026   = as.integer(ano) == 2026L) %>%
+  left_join(votados_2026, by = c("cargo", "uf_chave", "num_chave")) %>%
+  mutate(votado_2026 = eh_2026 & coalesce(votado_2026, FALSE),
+         situacao = if_else(eh_2026 & is.na(situacao) & votado_2026, "deferido", situacao)) %>%
+  select(-uf_chave, -num_chave, -eh_2026, -votado_2026)
+
+# Situação em 2026 após a aproximação
+candidatos %>% filter(ano == 2026) %>% count(cargo, situacao)
 
 candidaturas_gerais <- candidatos %>%
   filter(situacao %in% c("deferido com recurso", "deferido"))

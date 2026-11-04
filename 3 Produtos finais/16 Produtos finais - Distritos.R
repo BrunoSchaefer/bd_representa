@@ -5,7 +5,7 @@
 # racial nos cargos proporcionais, informações sobre os partidos no distrito
 # e sobre as eleições majoritárias.
 #
-#   bd_distritos_estadual   ano-UF (eleições gerais 2010–2022), cargos
+#   bd_distritos_estadual   ano-UF (eleições gerais 2010–2026), cargos
 #                           proporcionais: câmara (deputado federal) e
 #                           assembleia (deputado estadual ou distrital)
 #   bd_distritos_municipal  ano-município (eleições municipais 2012–2024),

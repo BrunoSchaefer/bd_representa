@@ -9,7 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-Dados dos resultados dos candidatos das eleições gerais (2010, 2014, 2018, 2022)
+Dados dos resultados dos candidatos das eleições gerais (2010, 2014, 2018, 2022, 2026)
 
 Por candidato
 
@@ -53,7 +53,7 @@ tipos_ordinarios <- c("eleicao ordinaria", "eleicoes municipais 2020 - ap")
 ```{r}
 
 bd_res <- basedosdados::bdplyr("basedosdados.br_tse_eleicoes.resultados_candidato") %>%
-  dplyr::filter(ano %in% c(2002, 2006, 2010, 2014, 2018, 2022), tipo_eleicao %in% tipos_ordinarios) %>%
+  dplyr::filter(ano %in% c(2002, 2006, 2010, 2014, 2018, 2022, 2026), tipo_eleicao %in% tipos_ordinarios) %>%
   dplyr::select(
     ano, cargo, turno, sigla_uf,
     sequencial_candidato, titulo_eleitoral_candidato,

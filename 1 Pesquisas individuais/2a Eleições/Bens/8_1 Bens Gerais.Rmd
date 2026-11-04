@@ -10,7 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-Dados dos bens dos candidatos das eleições gerais (2010, 2014, 2018 e 2022)
+Dados dos bens dos candidatos das eleições gerais (2010, 2014, 2018, 2022 e 2026)
 
 Por candidato
 
@@ -56,7 +56,7 @@ tipos_ordinarios <- c("eleicao ordinaria", "eleicoes municipais 2020 - ap")
 ```{r}
 
 bd_rec <- basedosdados::bdplyr("basedosdados.br_tse_eleicoes.bens_candidato") %>%
-  dplyr::filter(ano %in% c(2010, 2014, 2018, 2022), tipo_eleicao %in% tipos_ordinarios) %>%
+  dplyr::filter(ano %in% c(2010, 2014, 2018, 2022, 2026), tipo_eleicao %in% tipos_ordinarios) %>%
   dplyr::select(
     ano, sigla_uf, tipo_eleicao,
     titulo_eleitoral_candidato, sequencial_candidato, 
@@ -254,9 +254,9 @@ dados_cand_bens %>% filter(if_any(starts_with("pct_"), ~ .x > 100))
 names(dados_cand_bens)
 
 bens_candidatos_gerais <- dados_cand_bens %>%
-  # Deflaciona variáveis pelo IPCA de 12/2025
+  # Deflaciona variáveis pelo IPCA de 12/2025 (2026: a partir do IPCA de 09/2026, último divulgado)
   mutate(across(c(patrimonio_total, starts_with("soma_bens_")),   # selecionar variáveis
-                ~ ipca(.x, as.Date(paste0(ano, "-12-31")), "12/2025")))
+                ~ ipca(.x, pmin(as.Date(paste0(ano, "-12-31")), as.Date("2026-09-01")), "12/2025")))
 
 
 summary(bens_candidatos_gerais)

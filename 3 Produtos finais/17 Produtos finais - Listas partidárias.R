@@ -4,8 +4,8 @@
 # Objetivo: bancos por partido-distrito-eleição nos cargos proporcionais, que
 # agregam a lista de candidaturas de cada partido e calculam os índices de
 # equidade (DRI) da lista:
-#   bd_partidos_camara       ano-partido-UF, deputado federal (2010–2022)
-#   bd_partidos_assembleias  ano-partido-UF, deputado estadual e distrital (2010–2022)
+#   bd_partidos_camara       ano-partido-UF, deputado federal (2010–2026)
+#   bd_partidos_assembleias  ano-partido-UF, deputado estadual e distrital (2010–2026)
 #   bd_partidos_vereanca     ano-partido-município, vereador (2012–2024), .csv
 #
 # Entradas: 2 Agregação dos dados/2b Eleições/bancos (candidaturas_*, código 12),

@@ -1,7 +1,7 @@
 ---
 title: "11 Informações Socioeconômicas"
 author: "Bruno Schaefer (IESP-UERJ)"
-date: "2026-09-30"
+date: "2026-11-04"
 output: html_document
 ---
 
@@ -9,7 +9,7 @@ output: html_document
 
 # Objetivo
 
-Reunir informações demográficas e socioeconômicas da basedosdados por distrito e ano (2010–2025):
+Reunir informações demográficas e socioeconômicas da basedosdados por distrito e ano (2010–2026):
 
 - **Município:** chave `ano` e `id_municipio` (código IBGE, 7 dígitos);
 - **UF:** chave `ano` e `sigla_uf` (soma dos municípios).
@@ -52,7 +52,7 @@ source(here("0 Funções, estrutura e passo-a-passo", "0_funcoes_auxiliares.R"))
 
 set_billing_id("seu-projeto") ## substituir por seu projeto
 
-anos <- 2010:2025
+anos <- 2010:2026
 dir.create(pasta$prod_socioeconomico, showWarnings = FALSE, recursive = TRUE)
 ```
 
@@ -398,6 +398,7 @@ socioeconomico_municipio |>
 | 2023|       5570|          5570|      5570|    5570|             0.560|
 | 2024|       5570|          5570|      5570|       0|             0.560|
 | 2025|       5570|          5570|      5570|       0|             0.560|
+| 2026|       5570|             0|      5570|       0|             0.560|
 
 ## UF
 

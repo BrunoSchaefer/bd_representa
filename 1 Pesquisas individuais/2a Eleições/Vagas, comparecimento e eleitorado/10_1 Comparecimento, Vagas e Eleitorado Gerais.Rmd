@@ -9,7 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-Dados das eleições gerais (2010, 2014, 2018, 2022)
+Dados das eleições gerais (2010, 2014, 2018, 2022, 2026)
 
 Por distrito
 
@@ -50,7 +50,7 @@ set_billing_id("seu-projeto") ## substituir por seu projeto
 
 bd_eleitorado <- basedosdados::bdplyr("basedosdados.br_tse_eleicoes.perfil_eleitorado_municipio_zona") %>%
   dplyr::filter(
-    ano %in% c(2010, 2014, 2018, 2022)
+    ano %in% c(2010, 2014, 2018, 2022, 2026)
   ) %>%
   dplyr::select(
     ano, sigla_uf,
@@ -146,7 +146,7 @@ eleitorado_uf <- eleitorado_uf %>%
 
 
 vagas <- basedosdados::bdplyr("basedosdados.br_tse_eleicoes.vagas") %>%
-  dplyr::filter(ano %in% c(2010, 2014, 2018, 2022)) %>%
+  dplyr::filter(ano %in% c(2010, 2014, 2018, 2022, 2026)) %>%
   basedosdados::bd_collect()
 
 names(vagas)                  # confirmar se existe tipo_eleicao (ou similar)
@@ -180,7 +180,7 @@ vagas_uf <- vagas %>%
 
 bd_eleitorado <- basedosdados::bdplyr("basedosdados.br_tse_eleicoes.detalhes_votacao_municipio") %>%
   dplyr::filter(
-    ano %in% c(2010, 2014, 2018, 2022)
+    ano %in% c(2010, 2014, 2018, 2022, 2026)
   ) %>%
   dplyr::select(
     ano, sigla_uf,
@@ -280,7 +280,7 @@ vagas_uf <- vagas_uf %>%
 # Uma linha por chave? (deve voltar vazio)
 vagas_uf %>% count(across(all_of(chaves_cargo))) %>% filter(n > 1)
 
-# Senado: 2 em 2010/2018, 1 em 2014/2022
+# Senado: 2 em 2010/2018/2026, 1 em 2014/2022
 vagas_uf %>% filter(cargo == "senador") %>% count(ano, vagas)
 
 # 2. Votação: 1º turno, sem presidente ------------------------------------------

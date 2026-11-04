@@ -25,10 +25,10 @@ O seguinte objeto é mascarado por 'package:purrr':
 
     transpose
 
-bd_candidatos_governadoria : 697 candidaturas | 2010=150 2014=162 2018=183 2022=202 
-bd_candidatos_senado : 894 candidaturas | 2010=215 2014=164 2018=309 2022=206 
-bd_candidatos_camara : 27841 candidaturas | 2010=4888 2014=5870 2018=7628 2022=9455 
-bd_candidatos_assembleia : 60607 candidaturas | 2010=12609 2014=15258 2018=16941 2022=15799 
+bd_candidatos_governadoria : 866 candidaturas | 2010=150 2014=162 2018=183 2022=202 2026=169 
+bd_candidatos_senado : 1171 candidaturas | 2010=215 2014=164 2018=309 2022=206 2026=277 
+bd_candidatos_camara : 34892 candidaturas | 2010=4888 2014=5870 2018=7628 2022=9455 2026=7051 
+bd_candidatos_assembleia : 71447 candidaturas | 2010=12609 2014=15258 2018=16941 2022=15799 2026=10840 
 bd_candidatos_prefeitura : 63124 candidaturas | 2012=14577 2016=15558 2020=18174 2024=14815 
 bd_candidatos_vereanca : 1751307 candidaturas | 2012=414021 2016=435698 2020=488282 2024=413306 
 Houve 12 avisos (use warnings() para vê-los)

@@ -25,7 +25,7 @@
 #     próprio ano e para o ano seguinte (2014 vale para 2014 e 2015; 2016 para
 #     2016 e 2017). Nos demais anos as variáveis ficam NA. A variável
 #     distrito_ano_eleicao informa a eleição de referência.
-#   - Nível estadual e nacional: eleições gerais (2010, 2014, 2018, 2022).
+#   - Nível estadual e nacional: eleições gerais (2010, 2014, 2018, 2022, 2026).
 #     Nível municipal: eleições municipais (2012, 2016, 2020, 2024).
 #   - Variáveis que dependem do cargo (vagas, votos válidos, brancos, nulos,
 #     eleitores por vaga) levam o nome do cargo: governador, senado, camara
@@ -47,7 +47,7 @@ source(here("0 Funções, estrutura e passo-a-passo", "0_funcoes_auxiliares.R"))
 
 pasta_saida <- pasta$juncao_partidos
 
-anos_gerais     <- c(2010, 2014, 2018, 2022)
+anos_gerais     <- c(2010, 2014, 2018, 2022, 2026)
 anos_municipais <- c(2012, 2016, 2020, 2024)
 anos_diretorios <- 2015:2025
 

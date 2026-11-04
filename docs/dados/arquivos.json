@@ -1,1 +1,422 @@
-[]
+[
+{
+"arquivo": "bd_candidatos_assembleia.csv.gz",
+"origem": "3 Produtos finais/bancos/bd_candidatos_assembleia.xlsx",
+"bytes": 20160621
+},
+{
+"arquivo": "bd_candidatos_camara.csv.gz",
+"origem": "3 Produtos finais/bancos/bd_candidatos_camara.xlsx",
+"bytes": 11072671
+},
+{
+"arquivo": "bd_candidatos_governadoria.csv.gz",
+"origem": "3 Produtos finais/bancos/bd_candidatos_governadoria.xlsx",
+"bytes": 437806
+},
+{
+"arquivo": "bd_candidatos_prefeitura.csv.gz",
+"origem": "3 Produtos finais/bancos/bd_candidatos_prefeitura.xlsx",
+"bytes": 34793186
+},
+{
+"arquivo": "bd_candidatos_senado.csv.gz",
+"origem": "3 Produtos finais/bancos/bd_candidatos_senado.xlsx",
+"bytes": 573076
+},
+{
+"arquivo": "bd_candidatos_vereanca.csv.gz",
+"origem": "3 Produtos finais/bancos/bd_candidatos_vereanca.csv",
+"bytes": 537304855
+},
+{
+"arquivo": "bd_diretorios_estadual.csv.gz",
+"origem": "3 Produtos finais/bancos/bd_diretorios_estadual.xlsx",
+"bytes": 3257705
+},
+{
+"arquivo": "bd_diretorios_municipal.csv.gz",
+"origem": "3 Produtos finais/bancos/bd_diretorios_municipal.csv",
+"bytes": 192858779
+},
+{
+"arquivo": "bd_diretorios_nacional.csv.gz",
+"origem": "3 Produtos finais/bancos/bd_diretorios_nacional.xlsx",
+"bytes": 218252
+},
+{
+"arquivo": "bd_dirigentes_estadual.csv.gz",
+"origem": "3 Produtos finais/bancos/bd_dirigentes_estadual.xlsx",
+"bytes": 9432033
+},
+{
+"arquivo": "bd_dirigentes_municipal_2015.csv.gz",
+"origem": "3 Produtos finais/bancos/bd_dirigentes_municipal/bd_dirigentes_municipal_2015.csv",
+"bytes": 28898826
+},
+{
+"arquivo": "bd_dirigentes_municipal_2016.csv.gz",
+"origem": "3 Produtos finais/bancos/bd_dirigentes_municipal/bd_dirigentes_municipal_2016.csv",
+"bytes": 45562272
+},
+{
+"arquivo": "bd_dirigentes_municipal_2017.csv.gz",
+"origem": "3 Produtos finais/bancos/bd_dirigentes_municipal/bd_dirigentes_municipal_2017.csv",
+"bytes": 48514158
+},
+{
+"arquivo": "bd_dirigentes_municipal_2018.csv.gz",
+"origem": "3 Produtos finais/bancos/bd_dirigentes_municipal/bd_dirigentes_municipal_2018.csv",
+"bytes": 32194621
+},
+{
+"arquivo": "bd_dirigentes_municipal_2019.csv.gz",
+"origem": "3 Produtos finais/bancos/bd_dirigentes_municipal/bd_dirigentes_municipal_2019.csv",
+"bytes": 34691133
+},
+{
+"arquivo": "bd_dirigentes_municipal_2020.csv.gz",
+"origem": "3 Produtos finais/bancos/bd_dirigentes_municipal/bd_dirigentes_municipal_2020.csv",
+"bytes": 44134581
+},
+{
+"arquivo": "bd_dirigentes_municipal_2021.csv.gz",
+"origem": "3 Produtos finais/bancos/bd_dirigentes_municipal/bd_dirigentes_municipal_2021.csv",
+"bytes": 34641185
+},
+{
+"arquivo": "bd_dirigentes_municipal_2022.csv.gz",
+"origem": "3 Produtos finais/bancos/bd_dirigentes_municipal/bd_dirigentes_municipal_2022.csv",
+"bytes": 24245615
+},
+{
+"arquivo": "bd_dirigentes_municipal_2023.csv.gz",
+"origem": "3 Produtos finais/bancos/bd_dirigentes_municipal/bd_dirigentes_municipal_2023.csv",
+"bytes": 24892818
+},
+{
+"arquivo": "bd_dirigentes_municipal_2024.csv.gz",
+"origem": "3 Produtos finais/bancos/bd_dirigentes_municipal/bd_dirigentes_municipal_2024.csv",
+"bytes": 34700879
+},
+{
+"arquivo": "bd_dirigentes_municipal_2025.csv.gz",
+"origem": "3 Produtos finais/bancos/bd_dirigentes_municipal/bd_dirigentes_municipal_2025.csv",
+"bytes": 27780897
+},
+{
+"arquivo": "bd_dirigentes_nacional.csv.gz",
+"origem": "3 Produtos finais/bancos/bd_dirigentes_nacional.xlsx",
+"bytes": 1713169
+},
+{
+"arquivo": "bd_distritos_estadual.csv.gz",
+"origem": "3 Produtos finais/bancos/bd_distritos_estadual.xlsx",
+"bytes": 99184
+},
+{
+"arquivo": "bd_distritos_municipal.csv.gz",
+"origem": "3 Produtos finais/bancos/bd_distritos_municipal.xlsx",
+"bytes": 10289142
+},
+{
+"arquivo": "bd_partidos_assembleias.csv.gz",
+"origem": "3 Produtos finais/bancos/bd_partidos_assembleias.xlsx",
+"bytes": 1765421
+},
+{
+"arquivo": "bd_partidos_camara.csv.gz",
+"origem": "3 Produtos finais/bancos/bd_partidos_camara.xlsx",
+"bytes": 1635936
+},
+{
+"arquivo": "bd_partidos_vereanca.csv.gz",
+"origem": "3 Produtos finais/bancos/bd_partidos_vereanca.csv",
+"bytes": 60623729
+},
+{
+"arquivo": "etapa1_banco_despesas_estadual.csv.gz",
+"origem": "1 Pesquisas individuais/4a Produtos/Financiamento partidário/banco_despesas_estadual.xlsx",
+"bytes": 1313838
+},
+{
+"arquivo": "etapa1_banco_despesas_municipal.csv.gz",
+"origem": "1 Pesquisas individuais/4a Produtos/Financiamento partidário/banco_despesas_municipal.xlsx",
+"bytes": 7815218
+},
+{
+"arquivo": "etapa1_banco_despesas_nacional.csv.gz",
+"origem": "1 Pesquisas individuais/4a Produtos/Financiamento partidário/banco_despesas_nacional.xlsx",
+"bytes": 124187
+},
+{
+"arquivo": "etapa1_banco_diretorios_estadual.csv.gz",
+"origem": "1 Pesquisas individuais/4a Produtos/Dirigentes e diretórios/banco_diretorios_estadual.xlsx",
+"bytes": 157411
+},
+{
+"arquivo": "etapa1_banco_diretorios_estadual2.csv.gz",
+"origem": "1 Pesquisas individuais/4a Produtos/Dirigentes e diretórios/banco_diretorios_estadual2.xlsx",
+"bytes": 253110
+},
+{
+"arquivo": "etapa1_banco_diretorios_municipal.csv.gz",
+"origem": "1 Pesquisas individuais/4a Produtos/Dirigentes e diretórios/banco_diretorios_municipal.xlsx",
+"bytes": 8125407
+},
+{
+"arquivo": "etapa1_banco_diretorios_municipal2.csv.gz",
+"origem": "1 Pesquisas individuais/4a Produtos/Dirigentes e diretórios/banco_diretorios_municipal2.xlsx",
+"bytes": 13056536
+},
+{
+"arquivo": "etapa1_banco_diretorios_nacional.csv.gz",
+"origem": "1 Pesquisas individuais/4a Produtos/Dirigentes e diretórios/banco_diretorios_nacional.xlsx",
+"bytes": 17371
+},
+{
+"arquivo": "etapa1_banco_diretorios_nacional2.csv.gz",
+"origem": "1 Pesquisas individuais/4a Produtos/Dirigentes e diretórios/banco_diretorios_nacional2.xlsx",
+"bytes": 20919
+},
+{
+"arquivo": "etapa1_banco_dirigentes_estadual.csv.gz",
+"origem": "1 Pesquisas individuais/4a Produtos/Dirigentes e diretórios/banco_dirigentes_estadual.xlsx",
+"bytes": 9341114
+},
+{
+"arquivo": "etapa1_banco_dirigentes_estadual2.csv.gz",
+"origem": "1 Pesquisas individuais/4a Produtos/Dirigentes e diretórios/banco_dirigentes_estadual2.xlsx",
+"bytes": 16043005
+},
+{
+"arquivo": "etapa1_banco_dirigentes_mun.csv.gz",
+"origem": "1 Pesquisas individuais/4a Produtos/Dirigentes e diretórios/banco_dirigentes_mun.csv",
+"bytes": 252276379
+},
+{
+"arquivo": "etapa1_banco_dirigentes_mun2.csv.gz",
+"origem": "1 Pesquisas individuais/4a Produtos/Dirigentes e diretórios/banco_dirigentes_mun2.csv",
+"bytes": 412424366
+},
+{
+"arquivo": "etapa1_banco_dirigentes_nacional.csv.gz",
+"origem": "1 Pesquisas individuais/4a Produtos/Dirigentes e diretórios/banco_dirigentes_nacional.xlsx",
+"bytes": 1613472
+},
+{
+"arquivo": "etapa1_banco_dirigentes_nacional2.csv.gz",
+"origem": "1 Pesquisas individuais/4a Produtos/Dirigentes e diretórios/banco_dirigentes_nacional2.xlsx",
+"bytes": 2294883
+},
+{
+"arquivo": "etapa1_banco_partidos_ano.csv.gz",
+"origem": "1 Pesquisas individuais/4a Produtos/Partidos/banco_partidos_ano.xlsx",
+"bytes": 4465
+},
+{
+"arquivo": "etapa1_banco_receitas_estadual.csv.gz",
+"origem": "1 Pesquisas individuais/4a Produtos/Financiamento partidário/banco_receitas_estadual.xlsx",
+"bytes": 674656
+},
+{
+"arquivo": "etapa1_banco_receitas_municipal.csv.gz",
+"origem": "1 Pesquisas individuais/4a Produtos/Financiamento partidário/banco_receitas_municipal.xlsx",
+"bytes": 6272741
+},
+{
+"arquivo": "etapa1_banco_receitas_nacional.csv.gz",
+"origem": "1 Pesquisas individuais/4a Produtos/Financiamento partidário/banco_receitas_nacional.xlsx",
+"bytes": 62897
+},
+{
+"arquivo": "etapa1_base_mun.csv.gz",
+"origem": "1 Pesquisas individuais/4a Produtos/Distritos/base_mun.xlsx",
+"bytes": 6213677
+},
+{
+"arquivo": "etapa1_base_uf.csv.gz",
+"origem": "1 Pesquisas individuais/4a Produtos/Distritos/base_uf.xlsx",
+"bytes": 69886
+},
+{
+"arquivo": "etapa1_bens_candidatos_gerais.csv.gz",
+"origem": "1 Pesquisas individuais/4a Produtos/Candidatos/bens_candidatos_gerais.xlsx",
+"bytes": 4296867
+},
+{
+"arquivo": "etapa1_bens_candidatos_municipais.csv.gz",
+"origem": "1 Pesquisas individuais/4a Produtos/Candidatos/bens_candidatos_municipais.csv",
+"bytes": 44065246
+},
+{
+"arquivo": "etapa1_candidaturas_gerais.csv.gz",
+"origem": "1 Pesquisas individuais/4a Produtos/Candidatos/candidaturas_gerais.xlsx",
+"bytes": 7027332
+},
+{
+"arquivo": "etapa1_candidaturas_municipais.csv.gz",
+"origem": "1 Pesquisas individuais/4a Produtos/Candidatos/candidaturas_municipais.csv",
+"bytes": 123546713
+},
+{
+"arquivo": "etapa1_financiamento_gerais.csv.gz",
+"origem": "1 Pesquisas individuais/4a Produtos/Candidatos/financiamento_gerais.xlsx",
+"bytes": 10262055
+},
+{
+"arquivo": "etapa1_financiamento_municipais.csv.gz",
+"origem": "1 Pesquisas individuais/4a Produtos/Candidatos/financiamento_municipais.csv",
+"bytes": 107452797
+},
+{
+"arquivo": "etapa1_resultados_gerais.csv.gz",
+"origem": "1 Pesquisas individuais/4a Produtos/Candidatos/resultados_gerais.xlsx",
+"bytes": 2410727
+},
+{
+"arquivo": "etapa1_resultados_municipais.csv.gz",
+"origem": "1 Pesquisas individuais/4a Produtos/Candidatos/resultados_municipais.csv",
+"bytes": 43497916
+},
+{
+"arquivo": "etapa1_socioeconomico_municipio.csv.gz",
+"origem": "1 Pesquisas individuais/4a Produtos/Socioeconômico/socioeconomico_municipio.csv",
+"bytes": 15332169
+},
+{
+"arquivo": "etapa1_socioeconomico_uf.csv.gz",
+"origem": "1 Pesquisas individuais/4a Produtos/Socioeconômico/socioeconomico_uf.csv",
+"bytes": 49437
+},
+{
+"arquivo": "etapa2_banco_estadual.csv.gz",
+"origem": "2 Agregação dos dados/1b Partidos/bancos/banco_estadual.xlsx",
+"bytes": 1996501
+},
+{
+"arquivo": "etapa2_banco_municipal.csv.gz",
+"origem": "2 Agregação dos dados/1b Partidos/bancos/banco_municipal.csv",
+"bytes": 28717293
+},
+{
+"arquivo": "etapa2_banco_nacional_comissao_executiva.csv.gz",
+"origem": "2 Agregação dos dados/1b Partidos/bancos/banco_nacional_comissao_executiva.xlsx",
+"bytes": 152967
+},
+{
+"arquivo": "etapa2_banco_nacional_orgao_direcao.csv.gz",
+"origem": "2 Agregação dos dados/1b Partidos/bancos/banco_nacional_orgao_direcao.xlsx",
+"bytes": 160008
+},
+{
+"arquivo": "etapa2_banco_partidos_estadual.csv.gz",
+"origem": "2 Agregação dos dados/1b Partidos/bancos/banco_partidos_estadual.xlsx",
+"bytes": 2030856
+},
+{
+"arquivo": "etapa2_banco_partidos_municipal.csv.gz",
+"origem": "2 Agregação dos dados/1b Partidos/bancos/banco_partidos_municipal.csv",
+"bytes": 29615729
+},
+{
+"arquivo": "etapa2_banco_partidos_nacional_comissao_executiva.csv.gz",
+"origem": "2 Agregação dos dados/1b Partidos/bancos/banco_partidos_nacional_comissao_executiva.xlsx",
+"bytes": 160121
+},
+{
+"arquivo": "etapa2_banco_partidos_nacional_orgao_direcao.csv.gz",
+"origem": "2 Agregação dos dados/1b Partidos/bancos/banco_partidos_nacional_orgao_direcao.xlsx",
+"bytes": 167022
+},
+{
+"arquivo": "etapa2_candidaturas_deputado_distrital.csv.gz",
+"origem": "2 Agregação dos dados/2b Eleições/bancos/candidaturas_deputado_distrital.xlsx",
+"bytes": 873818
+},
+{
+"arquivo": "etapa2_candidaturas_deputado_estadual.csv.gz",
+"origem": "2 Agregação dos dados/2b Eleições/bancos/candidaturas_deputado_estadual.xlsx",
+"bytes": 19131504
+},
+{
+"arquivo": "etapa2_candidaturas_deputado_federal.csv.gz",
+"origem": "2 Agregação dos dados/2b Eleições/bancos/candidaturas_deputado_federal.xlsx",
+"bytes": 10996009
+},
+{
+"arquivo": "etapa2_candidaturas_governador.csv.gz",
+"origem": "2 Agregação dos dados/2b Eleições/bancos/candidaturas_governador.xlsx",
+"bytes": 436484
+},
+{
+"arquivo": "etapa2_candidaturas_prefeito.csv.gz",
+"origem": "2 Agregação dos dados/2b Eleições/bancos/candidaturas_prefeito.xlsx",
+"bytes": 34682644
+},
+{
+"arquivo": "etapa2_candidaturas_presidente.csv.gz",
+"origem": "2 Agregação dos dados/2b Eleições/bancos/candidaturas_presidente.xlsx",
+"bytes": 23978
+},
+{
+"arquivo": "etapa2_candidaturas_senador.csv.gz",
+"origem": "2 Agregação dos dados/2b Eleições/bancos/candidaturas_senador.xlsx",
+"bytes": 571011
+},
+{
+"arquivo": "etapa2_candidaturas_vereador.csv.gz",
+"origem": "2 Agregação dos dados/2b Eleições/bancos/candidaturas_vereador.csv",
+"bytes": 531863572
+},
+{
+"arquivo": "etapa2_diretorios_estadual.csv.gz",
+"origem": "2 Agregação dos dados/1b Partidos/bancos/diretorios_estadual.xlsx",
+"bytes": 3212921
+},
+{
+"arquivo": "etapa2_diretorios_municipal.csv.gz",
+"origem": "2 Agregação dos dados/1b Partidos/bancos/diretorios_municipal.csv",
+"bytes": 190108048
+},
+{
+"arquivo": "etapa2_diretorios_nacional_comissao_executiva.csv.gz",
+"origem": "2 Agregação dos dados/1b Partidos/bancos/diretorios_nacional_comissao_executiva.xlsx",
+"bytes": 161228
+},
+{
+"arquivo": "etapa2_diretorios_nacional_orgao_direcao.csv.gz",
+"origem": "2 Agregação dos dados/1b Partidos/bancos/diretorios_nacional_orgao_direcao.xlsx",
+"bytes": 168144
+},
+{
+"arquivo": "etapa2_distritos_brasil_ano.csv.gz",
+"origem": "2 Agregação dos dados/1b Partidos/bancos/distritos_brasil_ano.xlsx",
+"bytes": 433
+},
+{
+"arquivo": "etapa2_distritos_brasil_eleicao.csv.gz",
+"origem": "2 Agregação dos dados/1b Partidos/bancos/distritos_brasil_eleicao.xlsx",
+"bytes": 532
+},
+{
+"arquivo": "etapa2_distritos_municipio_ano.csv.gz",
+"origem": "2 Agregação dos dados/1b Partidos/bancos/distritos_municipio_ano.csv",
+"bytes": 11256910
+},
+{
+"arquivo": "etapa2_distritos_municipio_eleicao.csv.gz",
+"origem": "2 Agregação dos dados/1b Partidos/bancos/distritos_municipio_eleicao.csv",
+"bytes": 4048116
+},
+{
+"arquivo": "etapa2_distritos_uf_ano.csv.gz",
+"origem": "2 Agregação dos dados/1b Partidos/bancos/distritos_uf_ano.xlsx",
+"bytes": 39880
+},
+{
+"arquivo": "etapa2_distritos_uf_eleicao.csv.gz",
+"origem": "2 Agregação dos dados/1b Partidos/bancos/distritos_uf_eleicao.xlsx",
+"bytes": 37180
+}
+]

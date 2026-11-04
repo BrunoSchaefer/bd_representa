@@ -2,9 +2,9 @@ campo;valor
 banco;bd_partidos_assembleias
 arquivo;3 Produtos finais/bancos/bd_partidos_assembleias.xlsx
 unidade de análise;ano-partido-UF: lista do partido para deputado estadual ou distrital
-linhas;2.958
-anos;2010, 2014, 2018, 2022
+linhas;3.470
+anos;2010, 2014, 2018, 2022, 2026
 variáveis;353
 código que produz;3 Produtos finais/17 Produtos finais
 documentação;0 Funções, estrutura e passo-a-passo/0 Estrutura de Montagem do Banco de Dados.Rmd
-gerado em;30/09/2026
+gerado em;04/11/2026

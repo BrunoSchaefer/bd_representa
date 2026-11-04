@@ -9,7 +9,7 @@ output: pdf_document
 
 ## Introdução
 
-Este código monta um banco no nível **partido-ano** (2010–2025) com características nacionais dos partidos: ideologia (duas medidas), democracia interna e o índice PSI. O banco é juntado aos bancos de direções e financiamento no código `5_1 Junção Partidos.R`.
+Este código monta um banco no nível **partido-ano** (2010–2026) com características nacionais dos partidos: ideologia (duas medidas), democracia interna e o índice PSI. O banco é juntado aos bancos de direções e financiamento no código `5_1 Junção Partidos.R`.
 
 Todas as fontes usam siglas da época da coleta (PMDB, PR, PRB, PPS etc.). Os bancos de dirigentes e de financiamento usam a sigla atual do partido em todos os anos (MDB, PL, REPUBLICANOS, CIDADANIA...). Por isso as siglas das fontes são convertidas para a sigla atual padronizada (`SG_PARTIDO_PAD`, a mesma usada no código 4).
 
@@ -41,7 +41,7 @@ library(tidyverse)
 ```
 
 ```
-## Warning: pacote 'ggplot2' foi compilado no R versão 4.5.2
+## Warning: pacote 'ggplot2' foi compilado no R versão 4.5.3
 ```
 
 ```
@@ -80,7 +80,7 @@ library(tidyverse)
 ## ── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
 ## ✔ dplyr     1.2.0     ✔ readr     2.1.6
 ## ✔ forcats   1.0.1     ✔ stringr   1.6.0
-## ✔ ggplot2   4.0.2     ✔ tibble    3.3.1
+## ✔ ggplot2   4.0.3     ✔ tibble    3.3.1
 ## ✔ lubridate 1.9.5     ✔ tidyr     1.3.2
 ## ✔ purrr     1.2.1
 ```
@@ -121,9 +121,9 @@ source(here("0 Funções, estrutura e passo-a-passo", "0_funcoes_auxiliares.R"))
 ``` r
 pasta_partidos <- pasta$brutos_partidos
 
-# 2010–2025: cobre as eleições desde 2010 (banco de candidatos) e os
+# 2010–2026: cobre as eleições desde 2010 (banco de candidatos) e os
 # diretórios desde 2015
-anos <- 2010:2025
+anos <- 2010:2026
 ```
 
 ## Correspondência de siglas
@@ -258,7 +258,7 @@ bls_ano |> count(ANO, bls_onda, com_dado = !is.na(bls_ideologia))
 ```
 
 ```
-## # A tibble: 32 × 4
+## # A tibble: 34 × 4
 ##      ANO bls_onda com_dado     n
 ##    <int>    <dbl> <lgl>    <int>
 ##  1  2010     2009 FALSE       12
@@ -271,7 +271,7 @@ bls_ano |> count(ANO, bls_onda, com_dado = !is.na(bls_ideologia))
 ##  8  2013     2013 TRUE        32
 ##  9  2014     2013 FALSE        7
 ## 10  2014     2013 TRUE        32
-## # ℹ 22 more rows
+## # ℹ 24 more rows
 ```
 
 #### Bolognesi, Ribeiro e Codato
@@ -518,7 +518,7 @@ banco_partidos |>
 ```
 
 ```
-## # A tibble: 16 × 6
+## # A tibble: 17 × 6
 ##      ANO partidos   bls bolognesi salgado ribeiro_psi
 ##    <int>    <int> <int>     <int>   <int>       <int>
 ##  1  2010       39    27        31      35          17
@@ -537,6 +537,7 @@ banco_partidos |>
 ## 14  2023       39    35        32      35          17
 ## 15  2024       39    35        32      35          17
 ## 16  2025       39    35        32      35          17
+## 17  2026       39    35        32      35          17
 ```
 
 ``` r
@@ -545,7 +546,7 @@ cor(banco_partidos$bls_ideologia, banco_partidos$bolognesi_ideologia, use = "com
 ```
 
 ```
-## [1] 0.9500477
+## [1] 0.9501071
 ```
 
 ## Exportação

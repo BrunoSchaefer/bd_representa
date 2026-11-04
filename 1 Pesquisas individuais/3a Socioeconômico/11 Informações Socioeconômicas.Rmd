@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 
 # Objetivo
 
-Reunir informações demográficas e socioeconômicas da basedosdados por distrito e ano (2010–2025):
+Reunir informações demográficas e socioeconômicas da basedosdados por distrito e ano (2010–2026):
 
 - **Município:** chave `ano` e `id_municipio` (código IBGE, 7 dígitos);
 - **UF:** chave `ano` e `sigla_uf` (soma dos municípios).
@@ -53,7 +53,7 @@ source(here("0 Funções, estrutura e passo-a-passo", "0_funcoes_auxiliares.R"))
 
 set_billing_id("seu-projeto") ## substituir por seu projeto
 
-anos <- 2010:2025
+anos <- 2010:2026
 dir.create(pasta$prod_socioeconomico, showWarnings = FALSE, recursive = TRUE)
 ```
 
