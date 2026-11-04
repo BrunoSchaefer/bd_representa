@@ -11,6 +11,7 @@
   --s1: #2a78d6;  /* azul   */
   --s2: #eb6834;  /* laranja */
   --s3: #1baf7a;  /* água   */
+  --s4: #eda100;  /* amarelo */
   --bar: #2a78d6;
   --bar-dim: #b7d3f6;
 }
@@ -19,14 +20,14 @@
     color-scheme: dark;
     --bg: #121211; --surface: #1a1a19; --text: #f0efec; --text-2: #c3c2b7; --muted: #94938b;
     --line: #2e2e2c; --grid: #262624; --accent: #6da7ec;
-    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --bar: #3987e5; --bar-dim: #1c5cab;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --bar: #3987e5; --bar-dim: #1c5cab;
   }
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
   --bg: #121211; --surface: #1a1a19; --text: #f0efec; --text-2: #c3c2b7; --muted: #94938b;
   --line: #2e2e2c; --grid: #262624; --accent: #6da7ec;
-  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --bar: #3987e5; --bar-dim: #1c5cab;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --bar: #3987e5; --bar-dim: #1c5cab;
 }
 
 * { box-sizing: border-box; }
@@ -116,6 +117,7 @@ td.n, th.n { text-align: right; }
   --div-0: #e4e2dc;
   --div-p1: #b7d3f6; --div-p2: #6da7ec; --div-p3: #256abf; --div-p4: #104281;
   --sem-dado: #f6f5f2; --borda-mapa: #fcfcfb; --borda-uf: #7a7974;
+  --seq-1: #cde2fb; --seq-2: #9ec5f4; --seq-3: #6da7ec; --seq-4: #3987e5; --seq-5: #256abf; --seq-6: #104281;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -123,6 +125,7 @@ td.n, th.n { text-align: right; }
     --div-0: #383835;
     --div-p1: #184f95; --div-p2: #256abf; --div-p3: #5598e7; --div-p4: #9ec5f4;
     --sem-dado: #121211; --borda-mapa: #1a1a19; --borda-uf: #94938b;
+    --seq-1: #17365c; --seq-2: #1c5cab; --seq-3: #256abf; --seq-4: #3987e5; --seq-5: #6da7ec; --seq-6: #b7d3f6;
   }
 }
 :root[data-theme="dark"] {
@@ -130,8 +133,13 @@ td.n, th.n { text-align: right; }
   --div-0: #383835;
   --div-p1: #184f95; --div-p2: #256abf; --div-p3: #5598e7; --div-p4: #9ec5f4;
   --sem-dado: #121211; --borda-mapa: #1a1a19; --borda-uf: #94938b;
+  --seq-1: #17365c; --seq-2: #1c5cab; --seq-3: #256abf; --seq-4: #3987e5; --seq-5: #6da7ec; --seq-6: #b7d3f6;
 }
 .m-controles { margin-top: 12px; }
+.paineis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 8px; }
+.painel h3 { margin: 0 0 4px; font-size: 14px; font-weight: 600; color: var(--text); }
+.painel .total { font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+@media (max-width: 760px) { .paineis { grid-template-columns: 1fr; } }
 .mapa-corpo { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 16px; align-items: start; }
 .mapa-svg svg path.d { stroke: var(--borda-mapa); stroke-width: .6; vector-effect: non-scaling-stroke; cursor: pointer; }
 .mapa-svg svg path.d:hover { stroke: var(--text); stroke-width: 1.5; }

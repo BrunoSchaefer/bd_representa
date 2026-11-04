@@ -15,6 +15,7 @@
     <p class="lead">Bancos de dados abertos sobre <strong>dirigentes partidários</strong>, <strong>diretórios</strong>, <strong>candidaturas</strong> e <strong>distritos eleitorais</strong> no Brasil, com 2015–2025 para direções e 2010–2026 para eleições.</p>
     <nav class="atalhos">
       <a href="#direcoes">Direções partidárias</a>
+      <a href="#diretorios">Diretórios</a>
       <a href="#candidaturas">Candidaturas</a>
       <a href="#mapa">Mapa da equidade</a>
       <a href="#partidos">Partidos</a>
@@ -47,6 +48,71 @@
     </div>
     <div class="grafico" id="g-direcoes"></div>
     <details><summary>Ver tabela</summary><div id="t-direcoes" class="tabela-wrap"></div></details>
+  </section>
+
+  <section id="diretorios" class="cartao">
+    <div class="cartao-cab">
+      <div>
+        <h2>Diretórios partidários ao longo do tempo</h2>
+        <p class="sub" id="dt-sub">Número de diretórios em funcionamento por ano e tipo de órgão, em cada esfera.</p>
+      </div>
+      <div class="segmentado" role="radiogroup" aria-label="Escala" id="dt-escala">
+        <button data-v="abs" aria-pressed="true">Número de diretórios</button>
+        <button data-v="pct">Percentual por tipo</button>
+      </div>
+    </div>
+    <div class="legenda" id="dt-legenda"></div>
+    <div class="paineis" id="g-diretorios"></div>
+    <p class="nota">Um diretório = um órgão partidário (partido em um município, UF ou no país) com atividade no ano. Quando mais de um tipo vigorou no ano, conta o de maior tempo de atividade. Escalas diferentes em cada painel.</p>
+    <details><summary>Ver tabela</summary><div id="t-diretorios" class="tabela-wrap"></div></details>
+  </section>
+
+  <section id="tipos" class="cartao">
+    <div class="cartao-cab">
+      <div>
+        <h2>Tipo de órgão partidário por partido</h2>
+        <p class="sub" id="tp-sub">Distribuição dos diretórios do partido por tipo de órgão.</p>
+      </div>
+      <div class="controles">
+        <label>Esfera <select id="tp-nivel">
+          <option value="municipal">Municipal</option>
+          <option value="estadual">Estadual</option>
+        </select></label>
+        <label>Ano <select id="tp-ano"></select></label>
+      </div>
+    </div>
+    <div class="legenda" id="tp-legenda"></div>
+    <div class="grafico" id="g-tipos"></div>
+    <p class="nota">Ordenado pela parcela de órgãos definitivos. Só aparecem partidos com pelo menos 10 diretórios no recorte.</p>
+  </section>
+
+  <section id="mapa-dir" class="cartao">
+    <div class="cartao-cab">
+      <div>
+        <h2>Mulheres na direção dos diretórios</h2>
+        <p class="sub" id="md-sub">Percentual de mulheres na presidência dos diretórios.</p>
+      </div>
+    </div>
+    <div class="controles m-controles">
+      <label>Esfera <select id="md-nivel">
+        <option value="municipal">Municipal (municípios)</option>
+        <option value="estadual">Estadual (UFs)</option>
+      </select></label>
+      <label>Ano <select id="md-ano"></select></label>
+      <div class="segmentado" role="radiogroup" aria-label="Cargo" id="md-cargo">
+        <button data-v="presidencia" aria-pressed="true">Presidência</button>
+        <button data-v="decisao">Presidência e tesouraria</button>
+      </div>
+    </div>
+    <div class="mapa-corpo">
+      <div class="grafico mapa-svg" id="g-mapa-dir"><p class="vazio">Carregando o mapa…</p></div>
+      <aside class="mapa-lado">
+        <div class="tile compacto" id="md-resumo"></div>
+        <div class="legenda-div" id="md-legenda"></div>
+      </aside>
+    </div>
+    <p class="nota" id="md-nota"></p>
+    <details><summary>Ver tabela</summary><div id="t-mapa-dir" class="tabela-wrap"></div></details>
   </section>
 
   <section id="candidaturas" class="cartao">

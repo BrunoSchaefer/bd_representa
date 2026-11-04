@@ -21,7 +21,8 @@
 
   const estado = { partido: "", uf: "", dMetrica: "membros", cCargo: "Vereança", cGrupo: "mulheres", pNivel: "municipal", pAno: null, aGrupo: "finais",
                    mCargo: "vereanca", mAno: null, mMedida: "candidaturas", mGrupo: "mulheres",
-                   pDim: "direcoes", pCargo: "vereanca", pMedida: "receitas", pGrupo: "mulheres" };
+                   pDim: "direcoes", pCargo: "vereanca", pMedida: "receitas", pGrupo: "mulheres",
+                   dtEscala: "abs", tpNivel: "municipal", tpAno: null, mdNivel: "municipal", mdAno: null, mdCargo: "presidencia" };
   let DIR = [], CAND = [], ARQ = [];
 
   const objetos = (j) => j.linhas.map((l) => Object.fromEntries(j.colunas.map((c, i) => [c, l[i]])));
@@ -64,6 +65,12 @@
     segmentado("#a-grupo", "aGrupo");
     segmentado("#m-grupo", "mGrupo");
     segmentado("#p-dim", "pDim");
+    segmentado("#dt-escala", "dtEscala");
+    segmentado("#md-cargo", "mdCargo");
+    $("#tp-nivel").onchange = (e) => { estado.tpNivel = e.target.value; desenhar(); };
+    $("#tp-ano").onchange = (e) => { estado.tpAno = +e.target.value; desenhar(); };
+    $("#md-nivel").onchange = (e) => { estado.mdNivel = e.target.value; desenhar(); };
+    $("#md-ano").onchange = (e) => { estado.mdAno = +e.target.value; desenhar(); };
     segmentado("#p-grupo", "pGrupo");
     $("#p-cargo").onchange = (e) => { estado.pCargo = e.target.value; desenhar(); };
     $("#p-medida").onchange = (e) => { estado.pMedida = e.target.value; desenhar(); };
@@ -91,7 +98,7 @@
   function desenhar() {
     const rec = [estado.partido || "todos os partidos", estado.uf ? UFS_NOMES[estado.uf] : "Brasil"].join(" · ");
     $("#f-resumo").textContent = `Mostrando: ${rec}`;
-    destaques(); direcoes(); candidaturas(); mapa(); partidos(); arquivos();
+    destaques(); direcoes(); diretorios(); candidaturas(); mapa(); partidos(); arquivos();
   }
 
   /* ------------------------------------------------------------ destaques */
@@ -314,6 +321,193 @@
       }
     } catch (e) {
       if (meu === tokenMapa) el.innerHTML = `<p class="vazio">Não foi possível carregar o mapa (${esc(e.message)}).</p>`;
+    }
+  }
+
+  /* ------------------------------------------------------------ diretórios */
+  const TIPOS_DIR = [ // ordem fixa das cores categóricas
+    { k: "definitivo", rot: "Órgão definitivo", cor: "--s1" },
+    { k: "provisorio", rot: "Órgão provisório", cor: "--s2" },
+    { k: "interventora", rot: "Comissão interventora", cor: "--s3" },
+    { k: "executiva", rot: "Só comissão executiva (nacional)", cor: "--s4" },
+  ];
+  const NIVEL_ROT = { nacional: "Nacional", estadual: "Estadual", municipal: "Municipal" };
+  let DT = null, tokenDir = 0;
+  const legendaTipos = (el, ks) => { el.innerHTML = TIPOS_DIR.filter((t) => ks.includes(t.k)).map((t) => `<span><i style="background:${css(t.cor)};height:10px;width:10px"></i>${t.rot}</span>`).join(""); };
+  const mostraTip = (ev, html) => { const tip = $("#tooltip"); tip.innerHTML = html; tip.hidden = false;
+    tip.style.left = Math.min(ev.clientX + 14, innerWidth - tip.offsetWidth - 8) + "px";
+    tip.style.top = Math.max(8, ev.clientY - tip.offsetHeight - 12) + "px"; };
+
+  async function diretorios() {
+    const meu = ++tokenDir;
+    try {
+      DT ||= objetos(await json("dados/diretorios.json"));
+      if (meu !== tokenDir) return;
+      const rows = filtra(DT);
+      const anos = [...new Set(DT.map((r) => r.ano))].sort();
+      const pct = estado.dtEscala === "pct";
+      legendaTipos($("#dt-legenda"), TIPOS_DIR.map((t) => t.k));
+      $("#dt-sub").textContent = `${pct ? "Composição dos diretórios por tipo de órgão" : "Número de diretórios em funcionamento por tipo de órgão"}, por ano e esfera${estado.partido ? " — " + estado.partido : ""}${estado.uf ? " — " + UFS_NOMES[estado.uf] : ""}.`;
+      const el = $("#g-diretorios"); el.innerHTML = "";
+      const tabela = [];
+      for (const nivel of ["nacional", "estadual", "municipal"]) {
+        const div = document.createElement("div"); div.className = "painel"; el.appendChild(div);
+        if (nivel === "nacional" && estado.uf) { div.innerHTML = `<h3>${NIVEL_ROT[nivel]}</h3><p class="vazio">Sem recorte por UF.</p>`; continue; }
+        const m = new Map(); // ano -> {tipo: n}
+        for (const r of rows) if (r.nivel === nivel) { const o = m.get(r.ano) || m.set(r.ano, {}).get(r.ano); o[r.tipo] = (o[r.tipo] || 0) + r.orgaos; }
+        const tot = (a) => Object.values(m.get(a) || {}).reduce((s, v) => s + v, 0);
+        const ult = anos[anos.length - 1];
+        div.innerHTML = `<h3>${NIVEL_ROT[nivel]}</h3><div class="total">${int(tot(ult))} diretórios em ${ult}</div>`;
+        const g = document.createElement("div"); g.className = "grafico"; div.appendChild(g);
+        const W = Math.max(220, g.clientWidth), H = 200, mg = { t: 6, r: 4, b: 22, l: pct ? 34 : 44 };
+        const iw = W - mg.l - mg.r, ih = H - mg.t - mg.b, bw = iw / anos.length;
+        const maxV = pct ? 1 : Math.max(1, ...anos.map(tot));
+        const passo = pct ? 0.25 : (() => { const e = Math.pow(10, Math.floor(Math.log10(maxV))); return [1, 2, 2.5, 5, 10].map((k) => k * e).find((s) => maxV / s <= 4); })();
+        const topo = pct ? 1 : Math.ceil(maxV / passo) * passo;
+        const y = (v) => mg.t + ih - (v / topo) * ih;
+        let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Diretórios ${nivel} por ano e tipo"><g class="grade">`;
+        for (let v = 0; v <= topo + 1e-9; v += passo) s += `<line x1="${mg.l}" x2="${W - mg.r}" y1="${y(v)}" y2="${y(v)}"/><text x="${mg.l - 6}" y="${y(v) + 4}" text-anchor="end">${pct ? Math.round(v * 100) + "%" : v >= 1000 ? (v / 1000).toLocaleString("pt-BR") + " mil" : v}</text>`;
+        s += `</g>`;
+        anos.forEach((a, i) => {
+          const o = m.get(a) || {}, T = tot(a); let acc = 0;
+          const x0 = mg.l + i * bw + bw * 0.15, w = bw * 0.7;
+          TIPOS_DIR.forEach((t) => {
+            const v = o[t.k] || 0; if (!v) return;
+            const vv = pct ? v / T : v, y1 = y(acc + vv), y0 = y(acc);
+            s += `<rect class="seg" data-a="${a}" x="${x0}" y="${y1}" width="${w}" height="${Math.max(0, y0 - y1 - 1)}" fill="${css(t.cor)}"/>`;
+            acc += vv;
+          });
+          s += `<rect class="alvo-ano" data-a="${a}" x="${mg.l + i * bw}" y="${mg.t}" width="${bw}" height="${ih}" fill="transparent"/>`;
+          if (i % (W < 300 ? 2 : 1) === 0 || i === anos.length - 1) s += `<text x="${x0 + w / 2}" y="${H - 6}" text-anchor="middle">${String(a).slice(2)}</text>`;
+          tabela.push([NIVEL_ROT[nivel], a, T, ...TIPOS_DIR.map((t) => o[t.k] || 0)]);
+        });
+        g.innerHTML = s + `</svg>`;
+        g.querySelectorAll(".alvo-ano").forEach((r) => {
+          r.addEventListener("pointermove", (ev) => {
+            const a = +r.dataset.a, o = m.get(a) || {}, T = tot(a);
+            mostraTip(ev, `<b>${NIVEL_ROT[nivel]} · ${a}</b>` + linhaTip("Total", int(T)) +
+              TIPOS_DIR.filter((t) => o[t.k]).map((t) => `<div class="linha"><span><i style="background:${css(t.cor)}"></i>${t.rot}</span><span>${int(o[t.k])} (${pct_(o[t.k] / T)})</span></div>`).join(""));
+          });
+          r.addEventListener("pointerleave", () => ($("#tooltip").hidden = true));
+        });
+      }
+      $("#t-diretorios").innerHTML = `<table><thead><tr><th>Esfera</th><th>Ano</th><th class="n">Total</th>${TIPOS_DIR.map((t) => `<th class="n">${t.rot}</th>`).join("")}</tr></thead><tbody>` +
+        tabela.map((l) => `<tr><td>${l[0]}</td><td>${l[1]}</td>${l.slice(2).map((v) => `<td class="n">${int(v)}</td>`).join("")}</tr>`).join("") + `</tbody></table>`;
+      tipos(); mapaDir();
+    } catch (e) {
+      if (meu === tokenDir) $("#g-diretorios").innerHTML = `<p class="vazio">Não foi possível carregar os diretórios (${esc(e.message)}).</p>`;
+    }
+  }
+  const pct_ = (x) => pct(x, 0);
+
+  function tipos() {
+    const el = $("#g-tipos"), nivel = estado.tpNivel;
+    const anos = [...new Set(DT.map((r) => r.ano))].sort();
+    if (!anos.includes(estado.tpAno)) estado.tpAno = anos[anos.length - 1];
+    opcoes($("#tp-ano"), anos.slice().reverse().map((a) => [a, a])); $("#tp-ano").value = estado.tpAno;
+    const ks = ["definitivo", "provisorio", "interventora"];
+    legendaTipos($("#tp-legenda"), ks);
+    $("#tp-sub").textContent = `Distribuição dos diretórios ${nivel === "municipal" ? "municipais" : "estaduais"} de cada partido por tipo de órgão, ${estado.tpAno}${estado.uf ? " — " + UFS_NOMES[estado.uf] : ""}.`;
+    const m = new Map();
+    for (const r of filtra(DT, { partido: false })) {
+      if (r.nivel !== nivel || r.ano !== estado.tpAno) continue;
+      const o = m.get(r.partido) || m.set(r.partido, { total: 0 }).get(r.partido);
+      o[r.tipo] = (o[r.tipo] || 0) + r.orgaos; o.total += r.orgaos;
+    }
+    const dados = [...m].filter(([p, o]) => p !== "?" && o.total >= 10).map(([p, o]) => ({ p, ...o, def: (o.definitivo || 0) / o.total })).sort((a, b) => b.def - a.def);
+    if (!dados.length) { el.innerHTML = `<p class="vazio">Sem dados para este recorte.</p>`; return; }
+    const W = Math.max(320, el.clientWidth), bh = 18, gap = 6, mg = { t: 4, r: 56, b: 22, l: 108 };
+    const H = mg.t + mg.b + dados.length * (bh + gap), iw = W - mg.l - mg.r, x = (v) => mg.l + v * iw;
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Tipo de órgão por partido"><g class="grade">`;
+    for (let v = 0; v <= 1.0001; v += 0.25) s += `<line x1="${x(v)}" x2="${x(v)}" y1="${mg.t}" y2="${H - mg.b}"/><text x="${x(v)}" y="${H - 6}" text-anchor="middle">${v * 100}%</text>`;
+    s += `</g>`;
+    dados.forEach((d, i) => {
+      const yy = mg.t + i * (bh + gap), sel = estado.partido === d.p; let acc = 0;
+      s += `<g class="barra" data-i="${i}" opacity="${estado.partido && !sel ? 0.45 : 1}"><rect x="0" y="${yy - gap / 2}" width="${W}" height="${bh + gap}" fill="transparent"/>` +
+        `<text x="${mg.l - 8}" y="${yy + bh / 2 + 4}" text-anchor="end" style="fill:var(${sel ? "--text" : "--text-2"});font-weight:${sel ? 700 : 400}">${esc(d.p)}</text>`;
+      TIPOS_DIR.filter((t) => ks.includes(t.k)).forEach((t) => {
+        const v = (d[t.k] || 0) / d.total; if (!v) return;
+        s += `<rect x="${x(acc)}" y="${yy}" width="${Math.max(0, x(acc + v) - x(acc) - 1)}" height="${bh}" fill="${css(t.cor)}"/>`; acc += v;
+      });
+      s += `<text x="${x(1) + 6}" y="${yy + bh / 2 + 4}">${int(d.total)}</text></g>`;
+    });
+    el.innerHTML = s + `<text></text></svg>`;
+    el.querySelectorAll(".barra").forEach((g) => {
+      g.addEventListener("pointermove", (ev) => {
+        const d = dados[+g.dataset.i];
+        mostraTip(ev, `<b>${esc(d.p)} · ${estado.tpAno}</b>` + linhaTip("Diretórios", int(d.total)) +
+          TIPOS_DIR.filter((t) => ks.includes(t.k) && d[t.k]).map((t) => `<div class="linha"><span><i style="background:${css(t.cor)}"></i>${t.rot}</span><span>${int(d[t.k])} (${pct_(d[t.k] / d.total)})</span></div>`).join(""));
+      });
+      g.addEventListener("pointerleave", () => ($("#tooltip").hidden = true));
+    });
+  }
+
+  // mapa: % de mulheres na presidência (ou presidência e tesouraria)
+  const FAIXAS_SEQ = [[0.1, "--seq-1", "0 a 10%"], [0.2, "--seq-2", "10 a 20%"], [0.3, "--seq-3", "20 a 30%"],
+    [0.4, "--seq-4", "30 a 40%"], [0.5, "--seq-5", "40 a 50%"], [1.0001, "--seq-6", "50% ou mais"]];
+  const corSeq = (v) => v == null ? css("--sem-dado") : css(FAIXAS_SEQ.find((f) => v < f[0])[1]);
+  let tokenMD = 0;
+  async function mapaDir() {
+    const meu = ++tokenMD, el = $("#g-mapa-dir"), municipal = estado.mdNivel === "municipal";
+    try {
+      const anos = [...new Set(DT.map((r) => r.ano))].sort();
+      if (!anos.includes(estado.mdAno)) estado.mdAno = anos[anos.length - 1];
+      opcoes($("#md-ano"), anos.slice().reverse().map((a) => [a, a])); $("#md-ano").value = estado.mdAno;
+      const [geoUf, geoMun, nomes, doc] = await Promise.all([json("dados/geo/ufs.json"),
+        municipal ? json("dados/geo/municipios.json") : null, municipal ? json("dados/geo/nomes.json") : null,
+        municipal ? json(`dados/diretorios/municipal_${estado.mdAno}.json`) : null]);
+      if (meu !== tokenMD) return;
+      const pres = estado.mdCargo === "presidencia";
+      const val = new Map(); // distrito -> {num, den, orgaos}
+      const somar = (d, num, den) => { const o = val.get(d) || val.set(d, { num: 0, den: 0, orgaos: 0 }).get(d); o.num += num; o.den += den; o.orgaos++; };
+      if (municipal) {
+        const pi = estado.partido ? doc.partidos.indexOf(estado.partido) : -1;
+        for (const l of doc.linhas) if (!estado.partido || l[1] === pi) somar(l[0], pres ? l[6] : l[4], pres ? l[5] : l[3]);
+      } else {
+        for (const r of filtra(DT, { uf: false })) if (r.nivel === "estadual" && r.ano === estado.mdAno) somar(r.uf, pres ? r.mulheres_presidentes : r.mulheres_decisao, pres ? r.presidentes : r.decisao);
+      }
+      for (const o of val.values()) o.v = o.den > 0 ? o.num / o.den : null;
+      const ufDe = (d) => municipal ? (nomes[d] || "").slice(-3, -1) : d;
+      const nomeDe = (d) => municipal ? (nomes[d] || d) : `${UFS_NOMES[d]} (${d})`;
+      const [x0, y0, x1, y1] = estado.uf ? geoUf.caixas_uf[estado.uf] : geoUf.caixa, pad = (x1 - x0) * 0.03;
+      let s = `<svg viewBox="${x0 - pad} ${y0 - pad} ${x1 - x0 + 2 * pad} ${y1 - y0 + 2 * pad}" role="img" aria-label="Mapa: mulheres na direção dos diretórios">`;
+      const fonte = municipal ? geoMun : geoUf.ufs;
+      for (const [cod, path] of Object.entries(fonte)) {
+        if (estado.uf && ufDe(cod) !== estado.uf) continue;
+        const o = val.get(cod);
+        s += `<path class="d" data-d="${cod}" d="${path}" fill="${corSeq(o && o.v)}"/>`;
+      }
+      if (municipal) for (const [uf, path] of Object.entries(geoUf.ufs)) if (!estado.uf || uf === estado.uf) s += `<path class="uf" d="${path}"/>`;
+      el.innerHTML = s + `</svg>`;
+      const svg = el.querySelector("svg"), cargoTxt = pres ? "presidência" : "presidência e tesouraria";
+      svg.addEventListener("pointermove", (ev) => {
+        const t = ev.target.closest("path.d"); if (!t) { $("#tooltip").hidden = true; return; }
+        const o = val.get(t.dataset.d);
+        mostraTip(ev, `<b>${esc(nomeDe(t.dataset.d))}</b>` + (o ? linhaTip(`Mulheres na ${cargoTxt}`, `<strong>${pct(o.v)}</strong>`) +
+          linhaTip("Mulheres / cargos", `${int(o.num)} de ${int(o.den)}`) + linhaTip("Diretórios", int(o.orgaos))
+          : `<div class="linha"><span>Sem diretório${estado.partido ? " do " + esc(estado.partido) : ""}</span><span></span></div>`));
+      });
+      svg.addEventListener("pointerleave", () => ($("#tooltip").hidden = true));
+      // resumo, legenda, tabela
+      const vis = [...val].filter(([d]) => !estado.uf || ufDe(d) === estado.uf);
+      const tot = vis.reduce((a, [, o]) => ((a.n += o.num), (a.d += o.den), (a.o += o.orgaos), a), { n: 0, d: 0, o: 0 });
+      const comAlguma = vis.filter(([, o]) => o.num > 0).length;
+      const unid = municipal ? "municípios" : "UFs";
+      $("#md-resumo").innerHTML = `<div class="rotulo">Mulheres na ${cargoTxt}</div><div class="valor">${tot.d ? pct(tot.n / tot.d) : "–"}</div>
+        <div class="contexto">${int(tot.n)} de ${int(tot.d)} cargos · ${int(tot.o)} diretórios · ${pct_(vis.length ? comAlguma / vis.length : null)} ${municipal ? "dos" : "das"} ${unid} com ao menos uma mulher</div>`;
+      $("#md-legenda").innerHTML = `<div class="titulo">Mulheres na ${cargoTxt}</div>` +
+        FAIXAS_SEQ.slice().reverse().map(([, c, r]) => `<div class="faixa"><i style="background:${css(c)}"></i>${r}</div>`).join("") +
+        `<div class="faixa"><i style="background:${css("--sem-dado")};box-shadow:inset 0 0 0 1px ${css("--line")}"></i>sem diretório</div>`;
+      $("#md-sub").textContent = `Percentual de mulheres na ${cargoTxt} dos diretórios ${municipal ? "municipais" : "estaduais"}, ${estado.mdAno}${estado.partido ? ", " + estado.partido : ", todos os partidos"}.`;
+      $("#md-nota").textContent = (municipal ? "As zonas do DF aparecem somadas em Brasília. " : "") +
+        (estado.partido ? "Com um partido escolhido, cada distrito tem em geral um só diretório: o mapa mostra onde a presidência é de uma mulher." : "Sem filtro de partido, soma os cargos de todos os diretórios do distrito.");
+      const linhasT = municipal
+        ? (() => { const u = new Map(); for (const [d, o] of vis) { const k = ufDe(d); const a = u.get(k) || u.set(k, { n: 0, d: 0, o: 0 }).get(k); a.n += o.num; a.d += o.den; a.o += o.orgaos; } return [...u].sort(); })()
+        : vis.sort();
+      $("#t-mapa-dir").innerHTML = `<table><thead><tr><th>UF</th><th class="n">Diretórios</th><th class="n">Cargos</th><th class="n">Mulheres</th><th class="n">%</th></tr></thead><tbody>` +
+        linhasT.map(([k, o]) => { const n = o.num ?? o.n, d = o.den ?? o.d; return `<tr><td>${k}</td><td class="n">${int(o.orgaos ?? o.o)}</td><td class="n">${int(d)}</td><td class="n">${int(n)}</td><td class="n">${d ? pct(n / d) : "–"}</td></tr>`; }).join("") + `</tbody></table>`;
+    } catch (e) {
+      if (meu === tokenMD) el.innerHTML = `<p class="vazio">Não foi possível carregar o mapa (${esc(e.message)}).</p>`;
     }
   }
 

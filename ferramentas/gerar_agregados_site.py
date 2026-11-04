@@ -54,6 +54,69 @@ json.dump({"colunas": cols_dir, "linhas": dir_.astype(object).values.tolist()},
           open(out / "direcoes.json", "w", encoding="utf-8"), ensure_ascii=False,
           separators=(",", ":"), default=int)
 
+# --------------------------------------------- diretórios: tipos e mapa
+# Tipos de órgão: definitivo, provisório, comissão interventora; no nacional, ano
+# em que o partido só teve Comissão Executiva (tipo vazio no banco).
+TIPOS = {"ORGAO DEFINITIVO": "definitivo", "ORGAO PROVISORIO": "provisorio",
+         "COMISSAO INTERVENTORA": "interventora"}
+NUM_DIR = ["total_membros", "total_mulheres", "total_decisao", "mulher_decisao",
+           "total_presidente", "mulher_presidente"]
+
+# correspondência código TSE -> IBGE dos municípios (bancos de listas trazem os dois)
+xw = ler("bd_partidos_vereanca", ["id_municipio", "id_municipio_tse"])
+xw = xw.dropna().drop_duplicates()
+tse_ibge = dict(zip(xw["id_municipio_tse"].str.replace(r"\.0$", "", regex=True).str.lstrip("0"),
+                    xw["id_municipio"].str.replace(r"\.0$", "", regex=True)))
+
+partes, mapa_mun = [], {}
+for nivel in ["nacional", "estadual", "municipal"]:
+    d = ler(f"bd_diretorios_{nivel}", ["ANO", "SG_PARTIDO_PAD", "SG_UF", "CD_MUNICIPIO",
+                                        "NM_TIPO_ORGAO_PARTIDARIO"] + NUM_DIR)
+    if d is None:
+        continue
+    d["tipo"] = d["NM_TIPO_ORGAO_PARTIDARIO"].map(TIPOS).fillna("executiva" if nivel == "nacional" else "outro")
+    if nivel == "nacional":
+        d["SG_UF"] = "BR"
+    for c in NUM_DIR:
+        d[c] = num(d[c]).round().astype(int)
+    d["orgaos"] = 1
+    d["ANO"] = d["ANO"].astype(int)
+    g = d.groupby(["ANO", "SG_PARTIDO_PAD", "SG_UF", "tipo"], as_index=False)[["orgaos"] + NUM_DIR].sum()
+    g.insert(0, "nivel", nivel)
+    partes.append(g)
+    if nivel == "municipal":
+        cd = d["CD_MUNICIPIO"].str.replace(r"\.0$", "", regex=True).str.lstrip("0")
+        d["mun"] = cd.map(tse_ibge)
+        d.loc[d["SG_UF"] == "DF", "mun"] = "5300108"  # zonas do DF -> Brasília
+        print("  diretórios municipais sem código IBGE:", int(d["mun"].isna().sum()))
+        d = d.dropna(subset=["mun"])
+        tipos = ["definitivo", "provisorio", "interventora", "outro"]
+        for ano, ga in d.groupby("ANO"):
+            partidos = sorted(ga["SG_PARTIDO_PAD"].fillna("?").unique().tolist())
+            pidx = {p: i for i, p in enumerate(partidos)}
+            # zonas do DF somadas por partido
+            ga = ga.groupby(["mun", "SG_PARTIDO_PAD", "tipo"], as_index=False)[NUM_DIR].sum()
+            linhas = [[r.mun, pidx[r.SG_PARTIDO_PAD], tipos.index(r.tipo), r.total_decisao, r.mulher_decisao,
+                       r.total_presidente, r.mulher_presidente, r.total_membros, r.total_mulheres]
+                      for r in ga.itertuples(index=False)]
+            mapa_mun[int(ano)] = {"ano": int(ano), "partidos": partidos, "tipos": tipos,
+                                  "colunas": ["mun", "partido", "tipo", "decisao", "mulheres_decisao",
+                                              "presidentes", "mulheres_presidentes", "membros", "mulheres"],
+                                  "linhas": linhas}
+dt = pd.concat(partes)
+cols_dt = ["nivel", "ano", "partido", "uf", "tipo", "orgaos", "membros", "mulheres", "decisao",
+           "mulheres_decisao", "presidentes", "mulheres_presidentes"]
+dt = dt[["nivel", "ANO", "SG_PARTIDO_PAD", "SG_UF", "tipo", "orgaos"] + NUM_DIR]
+dt.columns = cols_dt
+json.dump({"colunas": cols_dt, "linhas": dt.astype(object).values.tolist()},
+          open(out / "diretorios.json", "w", encoding="utf-8"), ensure_ascii=False,
+          separators=(",", ":"), default=int, allow_nan=False)
+(out / "diretorios").mkdir(exist_ok=True)
+for ano, doc in mapa_mun.items():
+    json.dump(doc, open(out / "diretorios" / f"municipal_{ano}.json", "w", encoding="utf-8"),
+              ensure_ascii=False, separators=(",", ":"), default=int, allow_nan=False)
+print("diretórios:", len(dt), "linhas; mapa municipal", sorted(mapa_mun))
+
 # ------------------------------------------------------------ candidaturas
 CARGOS = {"vereanca": "Vereança", "prefeitura": "Prefeitura", "assembleia": "Deputado(a) estadual/distrital",
           "camara": "Deputado(a) federal", "senado": "Senado", "governadoria": "Governo estadual"}
