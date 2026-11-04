@@ -2,7 +2,7 @@
 
 **Conjunto de bancos de dados sobre partidos políticos e eleições no Brasil**, com foco em desigualdade de gênero e raça na representação política.
 
-Pesquisa: *Desigualdade de Gênero e Partidos* — Bruno Schaefer (IESP-UERJ).
+Pesquisa: *Desigualdade de Gênero e Partidos* — Bruno Schaefer (IESP-UERJ, [MAPE — Laboratório de Monitoramento e Avaliação de Políticas e Eleições](https://mape.org.br/)).
 
 🔎 **Visualização pública:** <https://brunoschaefer.github.io/bd_representa/>
 📦 **Download dos bancos:** [Releases](https://github.com/BrunoSchaefer/bd_representa/releases/latest)
@@ -15,9 +15,22 @@ Pesquisa: *Desigualdade de Gênero e Partidos* — Bruno Schaefer (IESP-UERJ).
 |---|---|---|
 | Partidos | Dirigente | `bd_dirigentes_nacional`, `bd_dirigentes_estadual`, `bd_dirigentes_municipal_<ano>` (2015–2025) |
 | Partidos | Diretório / órgão | `bd_diretorios_nacional`, `bd_diretorios_estadual`, `bd_diretorios_municipal` |
-| Eleições | Candidatura | `bd_candidatos_governadoria`, `_senado`, `_camara`, `_assembleia`, `_prefeitura`, `_vereanca` |
-| Eleições | Lista partidária | `bd_partidos_camara`, `bd_partidos_assembleias`, `bd_partidos_vereanca` |
-| Distritos | UF / município | `bd_distritos_estadual`, `bd_distritos_municipal` |
+| Eleições | Candidatura | `bd_candidatos_governadoria`, `_senado`, `_camara`, `_assembleia` (2010–2026), `_prefeitura`, `_vereanca` (2012–2024) |
+| Eleições | Lista partidária | `bd_partidos_camara`, `bd_partidos_assembleias` (2010–2026), `bd_partidos_vereanca` (2012–2024) |
+| Distritos | UF / município | `bd_distritos_estadual` (2010–2026), `bd_distritos_municipal` (2012–2024) |
+
+**Eleições de 2026:** incluídas a partir da Base dos Dados (TSE), 1º turno completo. Ainda não há dados de direções partidárias de 2026, então as variáveis de diretório e dirigentes ficam vazias nas candidaturas e listas de 2026. Os valores monetários de 2026 foram deflacionados a partir do IPCA de 09/2026.
+
+### Visualização
+
+A [página pública](https://brunoschaefer.github.io/bd_representa/) traz:
+
+- **Direções partidárias:** mulheres nas direções nacional, estadual e municipal (2015–2025).
+- **Candidaturas e eleição:** mulheres e pessoas negras entre candidaturas e eleitos, por cargo.
+- **Mapa da equidade nas listas partidárias:** o índice DRI por município (vereança) ou UF (deputado estadual/distrital e federal), por ano, grupo (mulheres ou pessoas negras) e medida (candidaturas, eleitos, votos, receitas, recursos públicos), para todas as listas ou para um partido.
+- **Comparação entre partidos** e **downloads**.
+
+O DRI vale `(b − p) / √((b − p)² + b(1 − b))`, em que *b* é a participação do grupo e *p* o seu peso no eleitorado (gênero) ou na população (raça). Vai de −1 (grupo ausente) a 1, e 0 indica paridade.
 
 Cada banco tem um dicionário de variáveis em [`3 Produtos finais/dicionarios`](3%20Produtos%20finais/dicionarios) (`.xlsx` e `.csv`).
 
@@ -75,7 +88,9 @@ Para reproduzir: abra `Dirigentes Partidários.Rproj` no RStudio e rode `0 Funç
 
 ## Como citar
 
-> Schaefer, Bruno. *bd_representa: conjunto de bancos de dados sobre partidos e eleições no Brasil*. IESP-UERJ, 2026. Disponível em: <https://github.com/BrunoSchaefer/bd_representa>.
+> Schaefer, Bruno. *bd_representa: conjunto de bancos de dados sobre partidos e eleições no Brasil*. IESP-UERJ, MAPE (Laboratório de Monitoramento e Avaliação de Políticas e Eleições), 2026. Disponível em: <https://github.com/BrunoSchaefer/bd_representa>.
+
+No GitHub, o botão **"Cite this repository"** (barra lateral) também traz a referência, gerada a partir do arquivo `CITATION.cff`.
 
 ## Licença
 

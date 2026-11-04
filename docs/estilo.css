@@ -108,6 +108,40 @@ td.n, th.n { text-align: right; }
 .tooltip .linha span:first-child { display: inline-flex; align-items: center; gap: 6px; color: var(--text-2); }
 .tooltip i { width: 10px; height: 3px; border-radius: 2px; display: inline-block; }
 
+/* mapa */
+:root {
+  --div-n4: #a3221f; --div-n3: #d6453f; --div-n2: #ec8a82; --div-n1: #f6c3be;
+  --div-0: #e4e2dc;
+  --div-p1: #b7d3f6; --div-p2: #6da7ec; --div-p3: #256abf; --div-p4: #104281;
+  --sem-dado: #f6f5f2; --borda-mapa: #fcfcfb; --borda-uf: #7a7974;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --div-n4: #f08a85; --div-n3: #d6453f; --div-n2: #a3221f; --div-n1: #6b1a18;
+    --div-0: #383835;
+    --div-p1: #184f95; --div-p2: #256abf; --div-p3: #5598e7; --div-p4: #9ec5f4;
+    --sem-dado: #121211; --borda-mapa: #1a1a19; --borda-uf: #94938b;
+  }
+}
+:root[data-theme="dark"] {
+  --div-n4: #f08a85; --div-n3: #d6453f; --div-n2: #a3221f; --div-n1: #6b1a18;
+  --div-0: #383835;
+  --div-p1: #184f95; --div-p2: #256abf; --div-p3: #5598e7; --div-p4: #9ec5f4;
+  --sem-dado: #121211; --borda-mapa: #1a1a19; --borda-uf: #94938b;
+}
+.m-controles { margin-top: 12px; }
+.mapa-corpo { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 16px; align-items: start; }
+.mapa-svg svg path.d { stroke: var(--borda-mapa); stroke-width: .6; vector-effect: non-scaling-stroke; cursor: pointer; }
+.mapa-svg svg path.d:hover { stroke: var(--text); stroke-width: 1.5; }
+.mapa-svg svg path.uf { fill: none; stroke: var(--borda-uf); stroke-width: .8; vector-effect: non-scaling-stroke; pointer-events: none; }
+.mapa-lado { display: grid; gap: 12px; }
+.tile.compacto .valor { font-size: 30px; }
+.legenda-div { font-size: 13px; color: var(--text-2); }
+.legenda-div .faixa { display: flex; align-items: center; gap: 8px; margin: 3px 0; }
+.legenda-div i { width: 18px; height: 12px; border-radius: 3px; display: inline-block; flex: none; }
+.legenda-div .titulo { color: var(--text); font-weight: 600; margin-bottom: 4px; }
+@media (max-width: 760px) { .mapa-corpo { grid-template-columns: 1fr; } }
+
 @media (max-width: 600px) {
   .filtros { position: static; }
   .cartao { padding: 16px; }

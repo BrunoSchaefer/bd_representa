@@ -78,6 +78,62 @@ json.dump({"colunas": list(cand.columns), "linhas": cand.astype(object).values.t
           open(out / "candidaturas.json", "w", encoding="utf-8"), ensure_ascii=False,
           separators=(",", ":"), default=int)
 
+# ------------------------------------------------------------ mapa (listas)
+# Um arquivo por cargo-ano. Por lista partidária no distrito: totais (T) e
+# participações (b) de mulheres e de pessoas negras; por distrito: o
+# denominador p do DRI. A página calcula DRI(b, p) para um partido ou para o
+# conjunto das listas (b ponderado por T).
+MEDIDAS = [  # (chave, total, participação de mulheres, participação de negros)
+    ("candidaturas", "n_candidatos", "prop_candidatos_mulheres", "prop_candidatos_negros"),
+    ("eleitos", "n_eleitos", "prop_eleitos_mulheres", "prop_eleitos_negros"),
+    ("votos", "votos_nominais", "prop_votos_mulheres", "prop_votos_negros"),
+    ("receitas", "receitas", "prop_receitas_mulheres", "prop_receitas_negros"),
+    ("receitas_publicas", "recursos_publicos", "prop_receitas_publicas_mulheres", "prop_receitas_publicas_negros"),
+]
+MAPAS = [("vereanca", "bd_partidos_vereanca", "id_municipio"),
+         ("assembleia", "bd_partidos_assembleias", "sigla_uf"),
+         ("camara", "bd_partidos_camara", "sigla_uf")]
+(out / "mapa").mkdir(exist_ok=True)
+indice = {}
+for chave, banco, col_dist in MAPAS:
+    cols = ["ano", col_dist, "SG_PARTIDO_PAD", "denominador_mulheres", "denominador_negros"] + \
+           [c for m in MEDIDAS for c in m[1:]]
+    d = ler(banco, cols)
+    if d is None:
+        continue
+    for c in cols[3:]:
+        d[c] = pd.to_numeric(d[c], errors="coerce")
+    sem = d[col_dist].isna().sum()
+    if sem:
+        print(f"  {banco}: {sem} linhas sem distrito descartadas")
+    d = d.dropna(subset=[col_dist]).copy()
+    d["ano"] = d["ano"].astype(int)
+    if col_dist == "id_municipio":
+        d[col_dist] = d[col_dist].str.replace(r"\.0$", "", regex=True)
+    indice[chave] = sorted(d["ano"].unique().tolist())
+    for ano, g in d.groupby("ano"):
+        partidos = sorted(g["SG_PARTIDO_PAD"].fillna("?").unique().tolist())
+        pidx = {p: i for i, p in enumerate(partidos)}
+        den = g.groupby(col_dist)[["denominador_mulheres", "denominador_negros"]].first()
+        distritos = {k: [None if pd.isna(v) else round(float(v), 4) for v in row]
+                     for k, row in zip(den.index, den.values)}
+        linhas = []
+        for r in g.itertuples(index=False):
+            r = r._asdict()
+            l = [r[col_dist], pidx[r["SG_PARTIDO_PAD"] if isinstance(r["SG_PARTIDO_PAD"], str) else "?"]]
+            for _, tot, pm, pn in MEDIDAS:
+                t = r[tot]
+                l.append(0 if pd.isna(t) else int(round(float(t))))
+                l.append(None if pd.isna(r[pm]) else round(float(r[pm]), 4))
+                l.append(None if pd.isna(r[pn]) else round(float(r[pn]), 4))
+            linhas.append(l)
+        doc = {"cargo": chave, "ano": int(ano), "medidas": [m[0] for m in MEDIDAS],
+               "partidos": partidos, "distritos": distritos, "linhas": linhas}
+        json.dump(doc, open(out / "mapa" / f"{chave}_{ano}.json", "w", encoding="utf-8"),
+                  ensure_ascii=False, separators=(",", ":"), default=int, allow_nan=False)
+    print("mapa", chave, indice[chave])
+json.dump(indice, open(out / "mapa" / "indice.json", "w"), separators=(",", ":"))
+
 # ---------------------------------------------------------------- arquivos
 arqs = []
 if (src / "MANIFESTO.csv").exists():

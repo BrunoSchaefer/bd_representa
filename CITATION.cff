@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: "Se usar estes dados, cite-os como abaixo."
+title: "bd_representa: conjunto de bancos de dados sobre partidos e eleições no Brasil"
+type: dataset
+authors:
+  - family-names: Schaefer
+    given-names: Bruno
+    affiliation: "IESP-UERJ; MAPE (Laboratório de Monitoramento e Avaliação de Políticas e Eleições)"
+publisher:
+  name: "IESP-UERJ, MAPE (Laboratório de Monitoramento e Avaliação de Políticas e Eleições)"
+date-released: 2026-11-04
+url: "https://github.com/BrunoSchaefer/bd_representa"
+repository-code: "https://github.com/BrunoSchaefer/bd_representa"
+license: CC-BY-4.0
+keywords:
+  - partidos políticos
+  - dirigentes partidários
+  - eleições
+  - Brasil
+  - desigualdade de gênero
+  - desigualdade racial

@@ -169,8 +169,8 @@ def main():
                 raise SystemExit(f"Nome duplicado: {nome}")
             origem_de[nome] = str(p.relative_to(raiz)).replace("\\", "/")
             d = dest / nome
-            if d.exists():  # retomada: pula o que já foi gerado
-                continue
+            if d.exists() and d.stat().st_mtime > p.stat().st_mtime:
+                continue  # já gerado e a origem não mudou desde então
             tarefas.append((p, d, chave))
     tarefas.sort(key=lambda t: -t[0].stat().st_size)  # maiores primeiro
     print(f"{len(tarefas)} arquivos a processar ({len(origem_de)} no total)", flush=True)

@@ -10,12 +10,13 @@
 <body>
 <header class="topo">
   <div class="largura">
-    <p class="sobretitulo">IESP-UERJ · Desigualdade de Gênero e Partidos</p>
+    <p class="sobretitulo">IESP-UERJ · <a href="https://mape.org.br/">MAPE (Laboratório de Monitoramento e Avaliação de Políticas e Eleições)</a> · Desigualdade de Gênero e Partidos</p>
     <h1>bd_representa</h1>
-    <p class="lead">Bancos de dados abertos sobre <strong>dirigentes partidários</strong>, <strong>diretórios</strong>, <strong>candidaturas</strong> e <strong>distritos eleitorais</strong> no Brasil, com 2015–2025 para direções e 2010–2024 para eleições.</p>
+    <p class="lead">Bancos de dados abertos sobre <strong>dirigentes partidários</strong>, <strong>diretórios</strong>, <strong>candidaturas</strong> e <strong>distritos eleitorais</strong> no Brasil, com 2015–2025 para direções e 2010–2026 para eleições.</p>
     <nav class="atalhos">
       <a href="#direcoes">Direções partidárias</a>
       <a href="#candidaturas">Candidaturas</a>
+      <a href="#mapa">Mapa da equidade</a>
       <a href="#partidos">Partidos</a>
       <a href="#baixar">Baixar os dados</a>
       <a href="https://github.com/BrunoSchaefer/bd_representa">Código no GitHub</a>
@@ -67,6 +68,43 @@
     <details><summary>Ver tabela</summary><div id="t-candidaturas" class="tabela-wrap"></div></details>
   </section>
 
+  <section id="mapa" class="cartao">
+    <div class="cartao-cab">
+      <div>
+        <h2>Equidade nas listas partidárias</h2>
+        <p class="sub" id="m-sub">Índice de equidade (DRI) por distrito: −1 = grupo ausente, 0 = paridade com o eleitorado ou a população, 1 = grupo detém tudo.</p>
+      </div>
+    </div>
+    <div class="controles m-controles">
+      <label>Cargo <select id="m-cargo">
+        <option value="vereanca">Vereança (municípios)</option>
+        <option value="assembleia">Deputado(a) estadual/distrital (UFs)</option>
+        <option value="camara">Deputado(a) federal (UFs)</option>
+      </select></label>
+      <label>Ano <select id="m-ano"></select></label>
+      <label>Medida <select id="m-medida">
+        <option value="candidaturas">Candidaturas</option>
+        <option value="eleitos">Eleitos(as)</option>
+        <option value="votos">Votos nominais</option>
+        <option value="receitas">Receitas de campanha</option>
+        <option value="receitas_publicas">Recursos públicos (FEFC e FP)</option>
+      </select></label>
+      <div class="segmentado" role="radiogroup" aria-label="Grupo" id="m-grupo">
+        <button data-v="mulheres" aria-pressed="true">Mulheres</button>
+        <button data-v="negros">Pessoas negras</button>
+      </div>
+    </div>
+    <div class="mapa-corpo">
+      <div class="grafico mapa-svg" id="g-mapa"><p class="vazio">Carregando o mapa…</p></div>
+      <aside class="mapa-lado">
+        <div class="tile compacto" id="m-resumo"></div>
+        <div class="legenda-div" id="m-legenda"></div>
+      </aside>
+    </div>
+    <p class="nota" id="m-nota"></p>
+    <details><summary>Ver tabela</summary><div id="t-mapa" class="tabela-wrap"></div></details>
+  </section>
+
   <section id="partidos" class="cartao">
     <div class="cartao-cab">
       <div>
@@ -102,8 +140,8 @@ cand &lt;- data.table::fread("https://github.com/BrunoSchaefer/bd_representa/rel
 </main>
 
 <footer class="largura rodape">
-  <p>Fontes: TSE (Portal de Dados Abertos), Base dos Dados, IBGE e literatura especializada (classificações ideológicas e organizacionais dos partidos). Elaboração: Bruno Schaefer (IESP-UERJ). Dados sob licença CC BY 4.0.</p>
-  <p>Como citar: Schaefer, Bruno. <em>bd_representa: conjunto de bancos de dados sobre partidos e eleições no Brasil</em>. IESP-UERJ, 2026.</p>
+  <p>Fontes: TSE (Portal de Dados Abertos), Base dos Dados, IBGE e literatura especializada (classificações ideológicas e organizacionais dos partidos). Elaboração: Bruno Schaefer (IESP-UERJ, <a href="https://mape.org.br/">MAPE</a>). Dados sob licença CC BY 4.0.</p>
+  <p>Como citar: Schaefer, Bruno. <em>bd_representa: conjunto de bancos de dados sobre partidos e eleições no Brasil</em>. IESP-UERJ, MAPE (Laboratório de Monitoramento e Avaliação de Políticas e Eleições), 2026. Disponível em: <a href="https://github.com/BrunoSchaefer/bd_representa">https://github.com/BrunoSchaefer/bd_representa</a>.</p>
 </footer>
 
 <div class="tooltip" id="tooltip" role="status" hidden></div>

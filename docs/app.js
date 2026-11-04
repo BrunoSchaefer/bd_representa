@@ -19,7 +19,8 @@
   const int = (x) => Math.round(x).toLocaleString("pt-BR");
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-  const estado = { partido: "", uf: "", dMetrica: "membros", cCargo: "Vereança", cGrupo: "mulheres", pNivel: "municipal", pAno: null, aGrupo: "finais" };
+  const estado = { partido: "", uf: "", dMetrica: "membros", cCargo: "Vereança", cGrupo: "mulheres", pNivel: "municipal", pAno: null, aGrupo: "finais",
+                   mCargo: "vereanca", mAno: null, mMedida: "candidaturas", mGrupo: "mulheres" };
   let DIR = [], CAND = [], ARQ = [];
 
   const objetos = (j) => j.linhas.map((l) => Object.fromEntries(j.colunas.map((c, i) => [c, l[i]])));
@@ -60,6 +61,10 @@
     segmentado("#d-metrica", "dMetrica");
     segmentado("#c-grupo", "cGrupo");
     segmentado("#a-grupo", "aGrupo");
+    segmentado("#m-grupo", "mGrupo");
+    $("#m-cargo").onchange = (e) => { estado.mCargo = e.target.value; desenhar(); };
+    $("#m-ano").onchange = (e) => { estado.mAno = +e.target.value; desenhar(); };
+    $("#m-medida").onchange = (e) => { estado.mMedida = e.target.value; desenhar(); };
     matchMedia("(prefers-color-scheme: dark)").addEventListener("change", desenhar);
     let t; addEventListener("resize", () => { clearTimeout(t); t = setTimeout(desenhar, 150); });
     desenhar();
@@ -81,7 +86,7 @@
   function desenhar() {
     const rec = [estado.partido || "todos os partidos", estado.uf ? UFS_NOMES[estado.uf] : "Brasil"].join(" · ");
     $("#f-resumo").textContent = `Mostrando: ${rec}`;
-    destaques(); direcoes(); candidaturas(); partidos(); arquivos();
+    destaques(); direcoes(); candidaturas(); mapa(); partidos(); arquivos();
   }
 
   /* ------------------------------------------------------------ destaques */
@@ -191,6 +196,120 @@
       ? "Pessoas negras = cor/raça preta ou parda. O TSE só informa cor/raça a partir de 2014, e o denominador inclui apenas candidaturas com cor/raça informada."
       : "Candidaturas deferidas em eleições ordinárias, no 1º turno. Eleitos inclui eleitos por quociente partidário e por média.";
     linhas($("#g-candidaturas"), { series, xs, tabela: $("#t-candidaturas") });
+  }
+
+  /* ------------------------------------------------------------ mapa da equidade */
+  const FAIXAS = [ // [limite superior, token de cor, rótulo]
+    [-0.6, "--div-n4", "−1 a −0,6"], [-0.35, "--div-n3", "−0,6 a −0,35"], [-0.15, "--div-n2", "−0,35 a −0,15"],
+    [-0.05, "--div-n1", "−0,15 a −0,05"], [0.05, "--div-0", "−0,05 a 0,05 (paridade)"], [0.15, "--div-p1", "0,05 a 0,15"],
+    [0.35, "--div-p2", "0,15 a 0,35"], [0.6, "--div-p3", "0,35 a 0,6"], [1.0001, "--div-p4", "0,6 a 1"],
+  ];
+  const corDri = (v) => v == null ? css("--sem-dado") : css(FAIXAS.find((f) => v < f[0])[1]);
+  const dri = (b, p) => (b == null || p == null) ? null : b === p ? 0 : (b - p) / Math.sqrt((b - p) ** 2 + b * (1 - b));
+  const fmtDri = (v) => v == null ? "–" : v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2, signDisplay: "exceptZero" });
+  const MED_ROT = { candidaturas: "candidaturas", eleitos: "eleitos(as)", votos: "votos nominais", receitas: "receitas", receitas_publicas: "recursos públicos" };
+  const cache = {};
+  const json = (u) => (cache[u] ||= fetch(u).then((r) => { if (!r.ok) throw new Error(r.status + " " + u); return r.json(); }));
+  let IND_MAPA = null, tokenMapa = 0;
+
+  async function mapa() {
+    const meu = ++tokenMapa, el = $("#g-mapa");
+    try {
+      IND_MAPA ||= await json("dados/mapa/indice.json");
+      const anos = IND_MAPA[estado.mCargo] || [];
+      if (!anos.includes(estado.mAno)) estado.mAno = anos[anos.length - 1];
+      opcoes($("#m-ano"), anos.slice().reverse().map((a) => [a, a])); $("#m-ano").value = estado.mAno;
+      const municipal = estado.mCargo === "vereanca";
+      const [geoUf, geoMun, nomes, doc] = await Promise.all([
+        json("dados/geo/ufs.json"), municipal ? json("dados/geo/municipios.json") : null,
+        municipal ? json("dados/geo/nomes.json") : null, json(`dados/mapa/${estado.mCargo}_${estado.mAno}.json`)]);
+      if (meu !== tokenMapa) return;
+
+      // b ponderado por T sobre as listas (todas ou do partido escolhido)
+      const k = doc.medidas.indexOf(estado.mMedida), g = estado.mGrupo === "mulheres" ? 0 : 1;
+      const pi = estado.partido ? doc.partidos.indexOf(estado.partido) : -1;
+      const acc = new Map();
+      for (const l of doc.linhas) {
+        if (estado.partido && l[1] !== pi) continue;
+        const T = l[2 + 3 * k], b = l[3 + 3 * k + g];
+        let o = acc.get(l[0]); if (!o) acc.set(l[0], (o = { num: 0, den: 0, listas: 0, total: 0 }));
+        o.listas++; o.total += T;
+        if (b != null && T > 0) { o.num += b * T; o.den += T; }
+      }
+      const val = new Map();
+      for (const [d, o] of acc) {
+        const p = doc.distritos[d] ? doc.distritos[d][g] : null, b = o.den > 0 ? o.num / o.den : null;
+        val.set(d, { ...o, b, p, v: dri(b, p) });
+      }
+      const ufDe = (d) => municipal ? (nomes[d] || "").slice(-3, -1) : d;
+      const visiveis = [...val.entries()].filter(([d]) => !estado.uf || ufDe(d) === estado.uf);
+
+      // geometria
+      const [x0, y0, x1, y1] = estado.uf ? geoUf.caixas_uf[estado.uf] : geoUf.caixa, pad = (x1 - x0) * 0.03;
+      const vb = `${x0 - pad} ${y0 - pad} ${x1 - x0 + 2 * pad} ${y1 - y0 + 2 * pad}`;
+      const nomeDe = (d) => municipal ? (nomes[d] || d) : `${UFS_NOMES[d]} (${d})`;
+      let s = `<svg viewBox="${vb}" role="img" aria-label="Mapa do índice de equidade por ${municipal ? "município" : "UF"}">`;
+      if (municipal) {
+        for (const [cod, path] of Object.entries(geoMun)) {
+          if (estado.uf && ufDe(cod) !== estado.uf) continue;
+          const o = val.get(cod);
+          s += `<path class="d" data-d="${cod}" d="${path}" fill="${corDri(o && o.v)}"/>`;
+        }
+        for (const [uf, path] of Object.entries(geoUf.ufs)) if (!estado.uf || uf === estado.uf) s += `<path class="uf" d="${path}"/>`;
+      } else {
+        for (const [uf, path] of Object.entries(geoUf.ufs)) {
+          if (estado.uf && uf !== estado.uf) continue;
+          const o = val.get(uf);
+          s += `<path class="d" data-d="${uf}" d="${path}" fill="${corDri(o && o.v)}"/>`;
+        }
+      }
+      el.innerHTML = s + `</svg>`;
+
+      // tooltip
+      const tip = $("#tooltip"), svg = el.querySelector("svg");
+      svg.addEventListener("pointermove", (ev) => {
+        const t = ev.target.closest("path.d"); if (!t) { tip.hidden = true; return; }
+        const d = t.dataset.d, o = val.get(d);
+        tip.innerHTML = `<b>${esc(nomeDe(d))}</b>` + (o ? `
+          <div class="linha"><span>DRI</span><span><strong>${fmtDri(o.v)}</strong></span></div>
+          <div class="linha"><span>${estado.mGrupo === "mulheres" ? "Mulheres" : "Pessoas negras"} em ${MED_ROT[estado.mMedida]}</span><span>${pct(o.b)}</span></div>
+          <div class="linha"><span>No ${estado.mGrupo === "mulheres" ? "eleitorado" : "população"} (p)</span><span>${pct(o.p)}</span></div>
+          <div class="linha"><span>Listas</span><span>${int(o.listas)}</span></div>` : `<div class="linha"><span>Sem lista${estado.partido ? " do " + esc(estado.partido) : ""}</span><span></span></div>`);
+        tip.hidden = false;
+        tip.style.left = Math.min(ev.clientX + 14, innerWidth - tip.offsetWidth - 8) + "px";
+        tip.style.top = Math.max(8, ev.clientY - tip.offsetHeight - 12) + "px";
+      });
+      svg.addEventListener("pointerleave", () => (tip.hidden = true));
+
+      // resumo, legenda e tabela
+      const vs = visiveis.map(([, o]) => o.v).filter((v) => v != null).sort((a, b) => a - b);
+      const med = vs.length ? (vs.length % 2 ? vs[(vs.length - 1) / 2] : (vs[vs.length / 2 - 1] + vs[vs.length / 2]) / 2) : null;
+      const abaixo = vs.length ? vs.filter((v) => v < -0.05).length / vs.length : null;
+      const unid = municipal ? "municípios" : "UFs";
+      $("#m-resumo").innerHTML = `<div class="rotulo">DRI mediano (${unid})</div><div class="valor">${fmtDri(med)}</div>
+        <div class="contexto">${vs.length ? `${pct(abaixo, 0)} ${municipal ? "dos" : "das"} ${int(vs.length)} ${unid} com dados abaixo da paridade` : "sem dados para este recorte"}</div>`;
+      $("#m-legenda").innerHTML = `<div class="titulo">Índice de equidade (DRI)</div>` +
+        FAIXAS.slice().reverse().map(([, c, r]) => `<div class="faixa"><i style="background:${css(c)}"></i>${r}</div>`).join("") +
+        `<div class="faixa"><i style="background:${css("--sem-dado")};box-shadow:inset 0 0 0 1px ${css("--line")}"></i>sem dados</div>
+         <p class="dica">Vermelho: sub-representação. Azul: sobre-representação.</p>`;
+      $("#m-sub").textContent = `${estado.mGrupo === "mulheres" ? "Mulheres" : "Pessoas negras"} em ${MED_ROT[estado.mMedida]}, ${estado.mAno}${estado.partido ? `, lista do ${estado.partido}` : ", todas as listas"}. DRI: −1 = grupo ausente; 0 = paridade com ${estado.mGrupo === "mulheres" ? "o eleitorado" : "a população"} do distrito; 1 = grupo detém tudo.`;
+      $("#m-nota").textContent = (estado.mGrupo === "negros" && estado.mAno < 2014 ? "O TSE só informa cor/raça a partir de 2014. " : "") +
+        "Sem filtro de partido, o índice usa o conjunto das listas do distrito (participação ponderada pelo total da medida). Denominador p: mulheres no eleitorado (TSE) e pessoas pretas e pardas na população (Censo).";
+      let linhasTab;
+      if (municipal) {
+        const porUf = new Map();
+        for (const [d, o] of visiveis) { if (o.v == null) continue; const u = ufDe(d); (porUf.get(u) || porUf.set(u, []).get(u)).push(o.v); }
+        linhasTab = [...porUf].sort().map(([u, a]) => { a.sort((x, y) => x - y); const m = a.length % 2 ? a[(a.length - 1) / 2] : (a[a.length / 2 - 1] + a[a.length / 2]) / 2;
+          return `<tr><td>${u}</td><td class="n">${int(a.length)}</td><td class="n">${fmtDri(m)}</td><td class="n">${pct(a.filter((v) => v < -0.05).length / a.length, 0)}</td></tr>`; });
+        $("#t-mapa").innerHTML = `<table><thead><tr><th>UF</th><th class="n">Municípios com dados</th><th class="n">DRI mediano</th><th class="n">Abaixo da paridade</th></tr></thead><tbody>${linhasTab.join("")}</tbody></table>`;
+      } else {
+        linhasTab = visiveis.sort((a, b) => (a[1].v ?? 9) - (b[1].v ?? 9)).map(([d, o]) =>
+          `<tr><td>${esc(nomeDe(d))}</td><td class="n">${fmtDri(o.v)}</td><td class="n">${pct(o.b)}</td><td class="n">${pct(o.p)}</td><td class="n">${int(o.listas)}</td></tr>`);
+        $("#t-mapa").innerHTML = `<table><thead><tr><th>UF</th><th class="n">DRI</th><th class="n">Participação (b)</th><th class="n">Referência (p)</th><th class="n">Listas</th></tr></thead><tbody>${linhasTab.join("")}</tbody></table>`;
+      }
+    } catch (e) {
+      if (meu === tokenMapa) el.innerHTML = `<p class="vazio">Não foi possível carregar o mapa (${esc(e.message)}).</p>`;
+    }
   }
 
   /* ------------------------------------------------------------ 3. partidos (barras) */
