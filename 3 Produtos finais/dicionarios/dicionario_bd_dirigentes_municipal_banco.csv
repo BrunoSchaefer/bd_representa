@@ -1,0 +1,10 @@
+campo;valor
+banco;bd_dirigentes_municipal
+arquivo;3 Produtos finais/bancos/bd_dirigentes_municipal
+unidade de análise;"ano-dirigente-cargo-município (direções municipais e zonais do DF; versão ampla; um arquivo por ano)"
+linhas;8.548.086
+anos;2015–2025
+variáveis;78
+código que produz;3 Produtos finais/14 Produtos finais
+documentação;0 Funções, estrutura e passo-a-passo/0 Estrutura de Montagem do Banco de Dados.Rmd
+gerado em;30/09/2026

@@ -1,0 +1,394 @@
+---
+title: "3_2 Financiamento Partidário Estadual - Receitas"
+author: "Bruno Schaefer (IESP-UERJ)"
+date: "2026-06-11"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introdução
+
+## Pacotes
+
+```{r pacotes}
+library(here)
+library(data.table)
+library(stringr)
+library(lubridate)
+library(stringi)
+library(openxlsx)
+library(tidyverse)
+
+# Funções auxiliares: leitura robusta dos CSVs do TSE e conversão de valores
+source(here("0 Funções, estrutura e passo-a-passo", "0_funcoes_auxiliares.R"))
+```
+
+## Carregar dados
+
+
+Dados baixados de: https://dadosabertos.tse.jus.br/dataset/prestacao-de-contas-partidarias-2024 (para todos os anos disponíveis)
+
+
+Data 17/01/2026
+
+
+```{r}
+
+# 1) Caminho da pasta (dentro do projeto)
+pasta_receitas <- pasta$brutos_financ_partidario
+
+# 2) Diagnóstico: ver caminho e checar existência
+pasta_receitas
+dir.exists(pasta_receitas)
+
+# 3) Listar tudo que está dentro da pasta
+list.files(pasta_receitas)
+
+# 4) Listar apenas os CSVs de RECEITA (com caminho completo)
+arquivos_receitas <- list.files(
+  path = pasta_receitas,
+  pattern = "(?i)^receita_anual_\\d{4}_BRASIL\\.csv$",
+  full.names = TRUE
+)
+
+length(arquivos_receitas)
+head(arquivos_receitas)
+
+# 5) Importar e empilhar RECEITAS
+#    Os arquivos do TSE (Latin-1) têm aspas internas não escapadas (ex.:
+#    "NELSON DALL" AGNESE") e quebras de linha dentro de nomes de doadores.
+#    O readr::read_delim descartava linhas sem erro (receitas 2017: 640.084
+#    linhas no arquivo, 291.899 lidas). ler_csv_tse() (0_funcoes_auxiliares.R)
+#    remonta os registros quebrados e lê tudo como texto.
+#    Os arquivos de receita não têm coluna de exercício: o ANO vem do nome do
+#    arquivo. Atenção: a coluna de esfera vem com erro de digitação do TSE
+#    (DS_TP_ESPERA_PARTIDARIA).
+receitas <- purrr::map_dfr(
+  arquivos_receitas,
+  \(f){
+    ler_csv_tse(f) %>%
+      as_tibble() %>%
+      mutate(
+        arquivo_origem = basename(f),
+        ANO = as.integer(stringr::str_extract(basename(f), "\\d{4}"))
+      )
+  }
+)
+
+# 6) Conversão do valor: o TSE usa vírgula decimal e não usa separador de
+#    milhar ("1234,56" → 1234.56)
+receitas <- receitas %>%
+  mutate(VR_RECEITA = converter_valor_tse(VR_RECEITA))
+
+# 7) Conferência
+glimpse(receitas)
+summary(select(receitas, VR_RECEITA))
+table(receitas$ANO, useNA = "ifany")
+
+
+
+```
+
+
+## Limpeza e Categorização dos dados
+
+
+Pensar na categorização das receitas a partir de:
+
+Schaefer, Bruno Marques. "Autofinanciamento eleitoral no Brasil: regulação, causas e consequências." (2022).
+
+Schaefer, B. M. (2025). Campaign Finance Reforms as Policies: A Policy Cycle Analysis. Dados, 68, e20230071.
+
+Schaefer, Bruno Marques, and Silvana Krause. "Financiamiento electoral y representación política en Brasil durante el gobierno Bolsonaro (2019‑2022): entre nuevos y viejos problemas." Revista Uruguaya de Ciencia Política 33 (2024): 1-24.
+
+
+
+
+
+```{r}
+
+## Limpeza dos dados -------------------------------------------------------
+
+table(receitas$DS_TP_ESPERA_PARTIDARIA)
+
+# manter apenas estadual e distrital (DF)
+dados_receitas <- receitas %>%
+  filter(DS_TP_ESPERA_PARTIDARIA %in% c("Estadual", "Distrital"))
+
+
+table(dados_receitas$DS_TP_FONTE_RECURSO)
+
+table(dados_receitas$DS_TP_ORIGEM_DOACAO)
+
+dados_receitas <- dados_receitas %>%
+  mutate(
+
+    # ------------------------------------------------------------------
+    # sufixo de finalidade (ordinária vs eleitoral)
+    # ------------------------------------------------------------------
+    sufixo = case_when(
+      str_detect(DS_TP_FONTE_RECURSO, regex("CAMPANHA|FEFC|FUNDO ESPECIAL", ignore_case = TRUE)) ~ "eleitoral",
+      str_detect(DS_TP_FONTE_RECURSO, regex("FUNDO PARTIDÁRIO|FUNDO PARTIDARIO",  ignore_case = TRUE)) ~ "ordinaria",
+      str_detect(DS_TP_FONTE_RECURSO, regex("OUTROS RECURSOS",                    ignore_case = TRUE)) ~ "ordinaria",
+      TRUE ~ "outro"
+    ),
+
+    # ------------------------------------------------------------------
+    # NÍVEL 1 — fonte do recurso (padronizada)
+    # ------------------------------------------------------------------
+    fonte_recurso = case_when(
+      str_detect(DS_TP_FONTE_RECURSO, regex("FUNDO ESPECIAL|FEFC|FINANCIAMENTO DE CAMPANHA",
+                                             ignore_case = TRUE)) ~ "fefc",
+      str_detect(DS_TP_FONTE_RECURSO, regex("FUNDO PARTIDÁRIO|FUNDO PARTIDARIO",
+                                             ignore_case = TRUE)) ~ "fundo_partidario",
+      str_detect(DS_TP_FONTE_RECURSO, regex("RECURSOS PARA CAMPANHA",
+                                             ignore_case = TRUE)) ~ "recursos_campanha",
+      str_detect(DS_TP_FONTE_RECURSO, regex("OUTROS RECURSOS",
+                                             ignore_case = TRUE)) ~ "outros_recursos",
+      DS_TP_FONTE_RECURSO == "#NULO#"                             ~ "nao_identificado",
+      TRUE                                                        ~ "nao_classificado"
+    ),
+
+    # ------------------------------------------------------------------
+    # NÍVEL 2 — origem da doação
+    # ------------------------------------------------------------------
+    origem_doacao = case_when(
+
+      # Cotas públicas
+      str_detect(DS_TP_ORIGEM_DOACAO, regex("COTAS DO FUNDO ESPECIAL|FEFC",
+                                             ignore_case = TRUE)) ~ "cota_fefc",
+      str_detect(DS_TP_ORIGEM_DOACAO, regex("COTAS DO FUNDO PARTIDÁRIO|COTAS DO FUNDO PARTIDARIO",
+                                             ignore_case = TRUE)) ~ "cota_fundo_partidario",
+
+      # Transferências intrapartidárias
+      str_detect(DS_TP_ORIGEM_DOACAO, regex("RECURSOS DE PARTIDOS POLÍTICOS|RECURSOS DE PARTIDOS POLITICOS",
+                                             ignore_case = TRUE)) ~ "partidos_politicos",
+      str_detect(DS_TP_ORIGEM_DOACAO, regex("RECURSOS DE CANDIDATOS",
+                                             ignore_case = TRUE)) ~ "candidatos",
+
+      # Doações privadas
+      str_detect(DS_TP_ORIGEM_DOACAO, regex("RECURSOS DE PESSOAS FÍSICAS|RECURSOS DE PESSOAS FISICAS",
+                                             ignore_case = TRUE)) ~ "pessoas_fisicas",
+      str_detect(DS_TP_ORIGEM_DOACAO, regex("RECURSOS DE PESSOAS JURÍDICAS|RECURSOS DE PESSOAS JURIDICAS",
+                                             ignore_case = TRUE)) ~ "pessoas_juridicas",
+
+      # Não identificados / nulos
+      str_detect(DS_TP_ORIGEM_DOACAO, regex("ORIGEM NÃO IDENTIFICADA|ORIGEM NAO IDENTIFICADA",
+                                             ignore_case = TRUE)) ~ "nao_identificada",
+      DS_TP_ORIGEM_DOACAO == "#NULO#"                             ~ "nao_identificada",
+
+      TRUE ~ "nao_classificado"
+    ),
+
+    # ------------------------------------------------------------------
+    # NÍVEL 3 — dimensão agregada da origem
+    # ------------------------------------------------------------------
+    dimensao_origem = case_when(
+      origem_doacao %in% c("cota_fefc", "cota_fundo_partidario")  ~ "recursos_publicos",
+      origem_doacao %in% c("partidos_politicos", "candidatos")     ~ "recursos_intrapartidarios",
+      origem_doacao %in% c("pessoas_fisicas", "pessoas_juridicas") ~ "recursos_privados",
+      origem_doacao == "nao_identificada"                          ~ "nao_identificada",
+      TRUE                                                         ~ NA_character_
+    )
+
+  )
+
+# Conferência
+table(dados_receitas$fonte_recurso,   useNA = "ifany")
+table(dados_receitas$origem_doacao,   useNA = "ifany")
+table(dados_receitas$dimensao_origem, useNA = "ifany")
+table(dados_receitas$sufixo,          useNA = "ifany")
+
+# Checar não classificados
+dados_receitas %>%
+  filter(origem_doacao == "nao_classificado" | fonte_recurso == "nao_classificado") %>%
+  count(DS_TP_FONTE_RECURSO, DS_TP_ORIGEM_DOACAO, sort = TRUE)
+
+
+```
+
+
+## Atualizar valores pela inflação
+
+```{r}
+
+### Converter valores inflação --------------------------------------------
+
+
+library(deflateBR)
+
+# Organiza os dados 
+
+names(dados_receitas)
+
+summary(dados_receitas)
+
+
+dados_receitas <- dados_receitas %>%
+  
+  # Deflaciona variaveis pelo IPCA de 12/2025
+  mutate(across(c(VR_RECEITA),
+                ~ ipca(.x, as.Date(paste0(ANO, "-12-31")), "12/2025")))
+
+options(scipen = 99)
+
+
+
+```
+
+
+## Tidy Data
+
+
+```{r}
+
+### Atualizar bancos de dados de receitas ----------------------------
+
+names(dados_receitas)
+table(dados_receitas$fonte_recurso)
+table(dados_receitas$origem_doacao)
+table(dados_receitas$dimensao_origem)
+
+banco_receitas <- dados_receitas %>%
+  group_by(
+    ANO,
+    DS_TP_ESPERA_PARTIDARIA,
+    SG_UF,
+    SG_PARTIDO,
+    NM_PARTIDO
+  ) %>%
+  summarise(
+
+    # ------------------------------------------------------------------
+    # TOTAIS GERAIS
+    # ------------------------------------------------------------------
+
+    # total bruto (tudo)
+    valor_total_bruto = sum(VR_RECEITA, na.rm = TRUE),
+
+    # total identificado (exclui nao_identificada —
+    # denominador correto para percentuais de origem)
+    valor_total_identificado = sum(
+      VR_RECEITA[dimensao_origem != "nao_identificada"],
+      na.rm = TRUE
+    ),
+
+    # ------------------------------------------------------------------
+    # NÍVEL 1 — por fonte do recurso
+    # ------------------------------------------------------------------
+
+    valor_fonte_fefc              = sum(VR_RECEITA[fonte_recurso == "fefc"],              na.rm = TRUE),
+    valor_fonte_fundo_partidario  = sum(VR_RECEITA[fonte_recurso == "fundo_partidario"],  na.rm = TRUE),
+    valor_fonte_recursos_campanha = sum(VR_RECEITA[fonte_recurso == "recursos_campanha"], na.rm = TRUE),
+    valor_fonte_outros_recursos   = sum(VR_RECEITA[fonte_recurso == "outros_recursos"],   na.rm = TRUE),
+    valor_fonte_nao_identificado  = sum(VR_RECEITA[fonte_recurso == "nao_identificado"],  na.rm = TRUE),
+
+    # · por finalidade (ordinária vs eleitoral)
+    valor_fonte_ordinaria         = sum(VR_RECEITA[sufixo == "ordinaria"], na.rm = TRUE),
+    valor_fonte_eleitoral         = sum(VR_RECEITA[sufixo == "eleitoral"], na.rm = TRUE),
+
+    # ------------------------------------------------------------------
+    # NÍVEL 2 — por origem da doação
+    # ------------------------------------------------------------------
+
+    # · Recursos públicos
+    valor_origem_cota_fefc           = sum(VR_RECEITA[origem_doacao == "cota_fefc"],            na.rm = TRUE),
+    valor_origem_cota_fundo_part     = sum(VR_RECEITA[origem_doacao == "cota_fundo_partidario"], na.rm = TRUE),
+
+    # · Recursos intrapartidários
+    valor_origem_partidos_politicos  = sum(VR_RECEITA[origem_doacao == "partidos_politicos"],    na.rm = TRUE),
+    valor_origem_candidatos          = sum(VR_RECEITA[origem_doacao == "candidatos"],            na.rm = TRUE),
+
+    # · Recursos privados
+    valor_origem_pessoas_fisicas     = sum(VR_RECEITA[origem_doacao == "pessoas_fisicas"],       na.rm = TRUE),
+    valor_origem_pessoas_juridicas   = sum(VR_RECEITA[origem_doacao == "pessoas_juridicas"],     na.rm = TRUE),
+
+    # · Não identificada
+    valor_origem_nao_identificada    = sum(VR_RECEITA[origem_doacao == "nao_identificada"],      na.rm = TRUE),
+
+    # ------------------------------------------------------------------
+    # NÍVEL 3 — por dimensão agregada da origem
+    # ------------------------------------------------------------------
+
+    valor_recursos_publicos          = sum(VR_RECEITA[dimensao_origem == "recursos_publicos"],         na.rm = TRUE),
+    valor_recursos_intrapartidarios  = sum(VR_RECEITA[dimensao_origem == "recursos_intrapartidarios"], na.rm = TRUE),
+    valor_recursos_privados          = sum(VR_RECEITA[dimensao_origem == "recursos_privados"],         na.rm = TRUE),
+    valor_nao_identificada           = sum(VR_RECEITA[dimensao_origem == "nao_identificada"],          na.rm = TRUE),
+
+    .groups = "drop"
+
+  ) %>%
+
+  # ------------------------------------------------------------------
+  # PERCENTUAIS
+  # ------------------------------------------------------------------
+  mutate(
+
+    # · Por fonte — sobre total bruto
+    pct_fonte_fefc              = (valor_fonte_fefc              / valor_total_bruto) * 100,
+    pct_fonte_fundo_partidario  = (valor_fonte_fundo_partidario  / valor_total_bruto) * 100,
+    pct_fonte_recursos_campanha = (valor_fonte_recursos_campanha / valor_total_bruto) * 100,
+    pct_fonte_outros_recursos   = (valor_fonte_outros_recursos   / valor_total_bruto) * 100,
+    pct_fonte_nao_identificado  = (valor_fonte_nao_identificado  / valor_total_bruto) * 100,
+
+    # · Finalidade — sobre total bruto
+    pct_fonte_ordinaria         = (valor_fonte_ordinaria         / valor_total_bruto) * 100,
+    pct_fonte_eleitoral         = (valor_fonte_eleitoral         / valor_total_bruto) * 100,
+
+    # · Por origem — sobre total identificado (denominador correto)
+    pct_origem_cota_fefc           = (valor_origem_cota_fefc          / valor_total_identificado) * 100,
+    pct_origem_cota_fundo_part     = (valor_origem_cota_fundo_part    / valor_total_identificado) * 100,
+    pct_origem_partidos_politicos  = (valor_origem_partidos_politicos / valor_total_identificado) * 100,
+    pct_origem_candidatos          = (valor_origem_candidatos         / valor_total_identificado) * 100,
+    pct_origem_pessoas_fisicas     = (valor_origem_pessoas_fisicas    / valor_total_identificado) * 100,
+    pct_origem_pessoas_juridicas   = (valor_origem_pessoas_juridicas  / valor_total_identificado) * 100,
+
+    # · Por dimensão — sobre total identificado
+    pct_recursos_publicos          = (valor_recursos_publicos         / valor_total_identificado) * 100,
+    pct_recursos_intrapartidarios  = (valor_recursos_intrapartidarios / valor_total_identificado) * 100,
+    pct_recursos_privados          = (valor_recursos_privados         / valor_total_identificado) * 100,
+
+    # · Não identificada — sobre total bruto
+    pct_nao_identificada           = (valor_nao_identificada          / valor_total_bruto)        * 100,
+
+    # · Checagem: dimensões identificadas devem somar 100
+    check_soma_origens             = pct_recursos_publicos +
+                                     pct_recursos_intrapartidarios +
+                                     pct_recursos_privados
+
+  )
+
+summary(banco_receitas)
+
+
+```
+
+
+## Salvar banco de dados
+
+```{r}
+
+
+### Salvar bancos de dados
+
+library(openxlsx)
+
+# pasta de saída
+pasta_saida <- pasta$prod_financ_partidario
+
+
+write.xlsx(
+  banco_receitas,
+  file = file.path(pasta_saida, "banco_receitas_estadual.xlsx"),
+  overwrite = TRUE
+)
+
+
+```
+
+
+
+

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bd_representa</title>
+<meta name="description" content="Bancos de dados sobre partidos políticos, dirigentes partidários e eleições no Brasil, com foco em desigualdade de gênero e raça.">
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+<header class="topo">
+  <div class="largura">
+    <p class="sobretitulo">IESP-UERJ · Desigualdade de Gênero e Partidos</p>
+    <h1>bd_representa</h1>
+    <p class="lead">Bancos de dados abertos sobre <strong>dirigentes partidários</strong>, <strong>diretórios</strong>, <strong>candidaturas</strong> e <strong>distritos eleitorais</strong> no Brasil, com 2015–2025 para direções e 2010–2024 para eleições.</p>
+    <nav class="atalhos">
+      <a href="#direcoes">Direções partidárias</a>
+      <a href="#candidaturas">Candidaturas</a>
+      <a href="#partidos">Partidos</a>
+      <a href="#baixar">Baixar os dados</a>
+      <a href="https://github.com/BrunoSchaefer/bd_representa">Código no GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main class="largura">
+  <section class="destaques" id="destaques" aria-label="Destaques"></section>
+
+  <div class="filtros" role="group" aria-label="Filtros">
+    <label>Partido <select id="f-partido"></select></label>
+    <label>UF <select id="f-uf"></select></label>
+    <span class="dica" id="f-resumo"></span>
+  </div>
+
+  <section id="direcoes" class="cartao">
+    <div class="cartao-cab">
+      <div>
+        <h2>Mulheres nas direções partidárias</h2>
+        <p class="sub">Percentual de mulheres por nível da direção e ano.</p>
+      </div>
+      <div class="segmentado" role="radiogroup" aria-label="Indicador" id="d-metrica">
+        <button data-v="membros" aria-pressed="true">Todos os membros</button>
+        <button data-v="decisao">Presidência e tesouraria</button>
+        <button data-v="presidentes">Presidência</button>
+      </div>
+    </div>
+    <div class="grafico" id="g-direcoes"></div>
+    <details><summary>Ver tabela</summary><div id="t-direcoes" class="tabela-wrap"></div></details>
+  </section>
+
+  <section id="candidaturas" class="cartao">
+    <div class="cartao-cab">
+      <div>
+        <h2>Candidaturas e eleição</h2>
+        <p class="sub">Participação entre as candidaturas deferidas e entre as pessoas eleitas.</p>
+      </div>
+      <div class="controles">
+        <label>Cargo <select id="c-cargo"></select></label>
+        <div class="segmentado" role="radiogroup" aria-label="Grupo" id="c-grupo">
+          <button data-v="mulheres" aria-pressed="true">Mulheres</button>
+          <button data-v="negros">Pessoas negras</button>
+        </div>
+      </div>
+    </div>
+    <div class="grafico" id="g-candidaturas"></div>
+    <p class="nota" id="c-nota"></p>
+    <details><summary>Ver tabela</summary><div id="t-candidaturas" class="tabela-wrap"></div></details>
+  </section>
+
+  <section id="partidos" class="cartao">
+    <div class="cartao-cab">
+      <div>
+        <h2>Comparação entre partidos</h2>
+        <p class="sub">Percentual de mulheres nas direções, por partido.</p>
+      </div>
+      <div class="controles">
+        <label>Nível <select id="p-nivel">
+          <option value="municipal">Municipal</option>
+          <option value="estadual">Estadual</option>
+          <option value="nacional">Nacional</option>
+        </select></label>
+        <label>Ano <select id="p-ano"></select></label>
+      </div>
+    </div>
+    <div class="grafico" id="g-partidos"></div>
+    <p class="nota">Só aparecem partidos com pelo menos 20 membros no recorte. O partido escolhido no filtro fica destacado.</p>
+  </section>
+
+  <section id="baixar" class="cartao">
+    <h2>Baixar os dados</h2>
+    <p>Todos os bancos estão em <code>.csv.gz</code> (separador <code>;</code>, UTF-8) na <a href="https://github.com/BrunoSchaefer/bd_representa/releases/latest">release mais recente</a>. Os dicionários de variáveis estão em <a href="https://github.com/BrunoSchaefer/bd_representa/tree/main/3%20Produtos%20finais/dicionarios">3 Produtos finais/dicionarios</a>.</p>
+    <pre class="codigo"><code># R
+cand &lt;- data.table::fread("https://github.com/BrunoSchaefer/bd_representa/releases/latest/download/bd_candidatos_camara.csv.gz")</code></pre>
+    <p class="nota"><strong>Dados pessoais:</strong> CPF e título eleitoral foram trocados por identificadores pseudônimos (<code>*_hash</code>), que continuam a ligar a mesma pessoa entre bancos e anos. E-mails e contatos foram removidos, e a data de nascimento foi reduzida ao ano.</p>
+    <div class="segmentado pequeno" role="radiogroup" aria-label="Grupo de arquivos" id="a-grupo">
+      <button data-v="finais" aria-pressed="true">Produtos finais</button>
+      <button data-v="etapa1">Etapa 1 (pesquisas individuais)</button>
+      <button data-v="etapa2">Etapa 2 (agregação)</button>
+    </div>
+    <div id="t-arquivos" class="tabela-wrap"></div>
+  </section>
+</main>
+
+<footer class="largura rodape">
+  <p>Fontes: TSE (Portal de Dados Abertos), Base dos Dados, IBGE e literatura especializada (classificações ideológicas e organizacionais dos partidos). Elaboração: Bruno Schaefer (IESP-UERJ). Dados sob licença CC BY 4.0.</p>
+  <p>Como citar: Schaefer, Bruno. <em>bd_representa: conjunto de bancos de dados sobre partidos e eleições no Brasil</em>. IESP-UERJ, 2026.</p>
+</footer>
+
+<div class="tooltip" id="tooltip" role="status" hidden></div>
+<script src="app.js"></script>
+</body>
+</html>

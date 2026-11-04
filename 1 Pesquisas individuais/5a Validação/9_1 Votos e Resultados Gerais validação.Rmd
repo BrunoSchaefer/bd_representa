@@ -1,0 +1,91 @@
+---
+title: "9_1 Votos e Resultados Gerais - validação"
+author: "Bruno Schaefer (IESP-UERJ)"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Objetivo
+
+Comparar o banco `resultados_gerais.xlsx` (código 9_1, feito com a basedosdados) com os votos por município e zona do Portal de Dados Abertos do TSE (`votacao_candidato_munzona`), para uma amostra: **eleição de 2018, Acre, 1º turno** (governador, senador, deputados federais e estaduais). Presidente fica de fora porque o arquivo da UF traz só os votos do presidente naquela UF.
+
+Os votos do TSE são somados por candidato. Compara-se também a situação final no turno (eleito / não eleito). Critério: votos idênticos em pelo menos 99% dos candidatos e concordância da situação de pelo menos 99%.
+
+## Pacotes e amostra
+
+```{r}
+
+library(tidyverse)
+library(openxlsx)
+library(here)
+
+source(here("0 Funções, estrutura e passo-a-passo", "0_funcoes_auxiliares.R"))
+
+ano_amostra <- 2018
+uf_amostra  <- "AC"
+cargos      <- c("governador", "senador", "deputado federal", "deputado estadual")
+
+```
+
+## Dados
+
+```{r}
+
+produzido <- read.xlsx(file.path(pasta$prod_candidatos, "resultados_gerais.xlsx")) |>
+  filter(ano == ano_amostra, sigla_uf == uf_amostra, turno == 1,
+         cargo %in% cargos, tipo_eleicao == "eleicao ordinaria") |>
+  mutate(numero_candidato = as.character(numero_candidato))
+
+tse <- ler_zip_tse(
+  file.path(pasta$brutos_resultados, paste0("votacao_candidato_munzona_", ano_amostra, ".zip")),
+  paste0("votacao_candidato_munzona_", ano_amostra, "_", uf_amostra, ".csv")
+) |>
+  as_tibble() |>
+  filter(NR_TURNO == "1", CD_TIPO_ELEICAO == "2") |>
+  mutate(cargo = texto_bd(DS_CARGO)) |>
+  filter(cargo %in% cargos)
+
+tse_cand <- tse |>
+  group_by(cargo, numero_candidato = NR_CANDIDATO) |>
+  summarise(
+    votos_tse         = sum(as.numeric(QT_VOTOS_NOMINAIS), na.rm = TRUE),
+    votos_validos_tse = sum(as.numeric(QT_VOTOS_NOMINAIS_VALIDOS), na.rm = TRUE),
+    situacao_tse      = first(texto_bd(DS_SIT_TOT_TURNO)),
+    .groups = "drop"
+  ) |>
+  mutate(eleito_tse = if_else(str_detect(situacao_tse, "^eleito"), "eleito", "nao eleito"))
+
+comp <- full_join(
+  select(produzido, cargo, numero_candidato, votos, eleito),
+  tse_cand, by = c("cargo", "numero_candidato")
+)
+
+```
+
+## Comparação
+
+```{r}
+
+comparar_valores(
+  comp |> transmute(cargo, numero_candidato, saida = votos, tse = votos_tse),
+  "Votos nominais por candidato (1º turno)", tolerancia = 0
+) |> head(10)
+
+comparar_valores(
+  comp |> transmute(cargo, numero_candidato, saida = votos, tse = votos_validos_tse),
+  "Votos nominais válidos por candidato (1º turno)", tolerancia = 0
+) |> head(10)
+
+comp |>
+  filter(!is.na(eleito), !is.na(eleito_tse)) |>
+  summarise(concordancia_eleito = round(100 * mean(eleito == eleito_tse), 2),
+            eleitos_produzido   = sum(eleito == "eleito"),
+            eleitos_tse         = sum(eleito_tse == "eleito"))
+
+comp |> filter(eleito != eleito_tse) |> head(10)
+
+```

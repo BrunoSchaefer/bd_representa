@@ -1,0 +1,243 @@
+/* bd_representa — página de visualização (sem dependências) */
+(() => {
+  const REPO = "https://github.com/BrunoSchaefer/bd_representa";
+  const NIVEIS = [
+    { k: "nacional", rotulo: "Nacional", cor: "--s1" },
+    { k: "estadual", rotulo: "Estadual", cor: "--s2" },
+    { k: "municipal", rotulo: "Municipal", cor: "--s3" },
+  ];
+  const METRICAS = {
+    membros: ["mulheres", "membros", "dos membros"],
+    decisao: ["mulheres_decisao", "decisao", "dos cargos de presidência e tesouraria"],
+    presidentes: ["mulheres_presidentes", "presidentes", "das presidências"],
+  };
+  const UFS_NOMES = {AC:"Acre",AL:"Alagoas",AM:"Amazonas",AP:"Amapá",BA:"Bahia",CE:"Ceará",DF:"Distrito Federal",ES:"Espírito Santo",GO:"Goiás",MA:"Maranhão",MG:"Minas Gerais",MS:"Mato Grosso do Sul",MT:"Mato Grosso",PA:"Pará",PB:"Paraíba",PE:"Pernambuco",PI:"Piauí",PR:"Paraná",RJ:"Rio de Janeiro",RN:"Rio Grande do Norte",RO:"Rondônia",RR:"Roraima",RS:"Rio Grande do Sul",SC:"Santa Catarina",SE:"Sergipe",SP:"São Paulo",TO:"Tocantins"};
+
+  const $ = (s) => document.querySelector(s);
+  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const pct = (x, d = 1) => (x == null || !isFinite(x)) ? "–" : (x * 100).toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d }) + "%";
+  const int = (x) => Math.round(x).toLocaleString("pt-BR");
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  const estado = { partido: "", uf: "", dMetrica: "membros", cCargo: "Vereança", cGrupo: "mulheres", pNivel: "municipal", pAno: null, aGrupo: "finais" };
+  let DIR = [], CAND = [], ARQ = [];
+
+  const objetos = (j) => j.linhas.map((l) => Object.fromEntries(j.colunas.map((c, i) => [c, l[i]])));
+
+  Promise.all(["dados/direcoes.json", "dados/candidaturas.json", "dados/arquivos.json"].map((u) => fetch(u).then((r) => r.json())))
+    .then(([d, c, a]) => { DIR = objetos(d); CAND = objetos(c); ARQ = a; iniciar(); })
+    .catch((e) => { document.querySelector("main").insertAdjacentHTML("afterbegin", `<p class="vazio">Não foi possível carregar os dados (${esc(e.message)}).</p>`); });
+
+  /* ------------------------------------------------------------ controles */
+  function opcoes(sel, valores, todos) {
+    sel.innerHTML = (todos ? `<option value="">${todos}</option>` : "") + valores.map(([v, t]) => `<option value="${esc(v)}">${esc(t)}</option>`).join("");
+  }
+  function segmentado(id, chave) {
+    const g = $(id);
+    g.addEventListener("click", (e) => {
+      const b = e.target.closest("button"); if (!b) return;
+      g.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", x === b));
+      estado[chave] = b.dataset.v; desenhar();
+    });
+  }
+
+  function iniciar() {
+    const partidos = [...new Set([...DIR, ...CAND].map((r) => r.partido))].filter((p) => p && p !== "?").sort((a, b) => a.localeCompare(b, "pt-BR"));
+    opcoes($("#f-partido"), partidos.map((p) => [p, p]), "Todos os partidos");
+    opcoes($("#f-uf"), Object.keys(UFS_NOMES).map((u) => [u, `${u} · ${UFS_NOMES[u]}`]), "Brasil");
+    const cargos = ["Vereança", "Prefeitura", "Deputado(a) estadual/distrital", "Deputado(a) federal", "Senado", "Governo estadual"].filter((c) => CAND.some((r) => r.cargo === c));
+    opcoes($("#c-cargo"), cargos.map((c) => [c, c]));
+    if (!cargos.includes(estado.cCargo)) estado.cCargo = cargos[0];
+    const anos = [...new Set(DIR.map((r) => r.ano))].sort();
+    estado.pAno = anos[anos.length - 1];
+    opcoes($("#p-ano"), anos.slice().reverse().map((a) => [a, a]));
+
+    $("#f-partido").onchange = (e) => { estado.partido = e.target.value; desenhar(); };
+    $("#f-uf").onchange = (e) => { estado.uf = e.target.value; desenhar(); };
+    $("#c-cargo").onchange = (e) => { estado.cCargo = e.target.value; desenhar(); };
+    $("#p-nivel").onchange = (e) => { estado.pNivel = e.target.value; desenhar(); };
+    $("#p-ano").onchange = (e) => { estado.pAno = +e.target.value; desenhar(); };
+    segmentado("#d-metrica", "dMetrica");
+    segmentado("#c-grupo", "cGrupo");
+    segmentado("#a-grupo", "aGrupo");
+    matchMedia("(prefers-color-scheme: dark)").addEventListener("change", desenhar);
+    let t; addEventListener("resize", () => { clearTimeout(t); t = setTimeout(desenhar, 150); });
+    desenhar();
+  }
+
+  const filtra = (rows, { partido = true, uf = true } = {}) => rows.filter((r) =>
+    (!partido || !estado.partido || r.partido === estado.partido) && (!uf || !estado.uf || r.uf === estado.uf));
+
+  function soma(rows, chaveGrupo, campos) {
+    const m = new Map();
+    for (const r of rows) {
+      const k = chaveGrupo(r);
+      let o = m.get(k); if (!o) { o = {}; campos.forEach((c) => (o[c] = 0)); m.set(k, o); }
+      campos.forEach((c) => (o[c] += r[c] || 0));
+    }
+    return m;
+  }
+
+  function desenhar() {
+    const rec = [estado.partido || "todos os partidos", estado.uf ? UFS_NOMES[estado.uf] : "Brasil"].join(" · ");
+    $("#f-resumo").textContent = `Mostrando: ${rec}`;
+    destaques(); direcoes(); candidaturas(); partidos(); arquivos();
+  }
+
+  /* ------------------------------------------------------------ destaques */
+  function destaques() {
+    const d = filtra(DIR).filter((r) => r.nivel === "municipal");
+    const anosD = DIR.filter((r) => r.nivel === "municipal").map((r) => r.ano);
+    const ultimo = anosD.length ? Math.max(...anosD) : null;
+    const dm = soma(d.filter((r) => r.ano === ultimo), () => 1, ["mulheres", "membros", "mulheres_presidentes", "presidentes"]).get(1);
+    const c = filtra(CAND).filter((r) => r.cargo === "Vereança");
+    const anosC = CAND.filter((r) => r.cargo === "Vereança").map((r) => r.ano);
+    const ultC = anosC.length ? Math.max(...anosC) : null;
+    const cm = soma(c.filter((r) => r.ano === ultC), () => 1, ["mulheres", "candidaturas", "eleitas", "eleitos"]).get(1);
+    const q = (a, b) => (b > 0 ? pct(a / b) : null);
+    const tiles = [
+      ["Mulheres nas direções municipais", dm && q(dm.mulheres, dm.membros), dm ? `${ultimo} · ${int(dm.membros)} membros` : "sem dados"],
+      ["Presidências municipais ocupadas por mulheres", dm && q(dm.mulheres_presidentes, dm.presidentes), dm ? `${ultimo} · ${int(dm.presidentes)} presidências` : "sem dados"],
+      ["Mulheres entre candidaturas à vereança", cm && q(cm.mulheres, cm.candidaturas), cm ? `${ultC} · ${int(cm.candidaturas)} candidaturas` : "sem dados"],
+      ["Mulheres entre eleitos à vereança", cm && q(cm.eleitas, cm.eleitos), cm ? `${ultC} · ${int(cm.eleitos)} eleitos(as)` : "sem dados"],
+    ];
+    $("#destaques").innerHTML = tiles.map(([r, v, c]) =>
+      `<div class="tile"><div class="rotulo">${r}</div><div class="valor">${v || "–"}</div><div class="contexto">${esc(c)}</div></div>`).join("");
+  }
+
+  /* ------------------------------------------------------------ gráfico de linhas */
+  function linhas(el, { series, xs, tabela, rotuloY = "%" }) {
+    const ativos = series.filter((s) => s.pontos.some((p) => p.y != null));
+    if (!ativos.length) { el.innerHTML = `<p class="vazio">Sem dados para este recorte.</p>`; tabela.innerHTML = ""; return; }
+    const W = Math.max(320, el.clientWidth), H = W < 560 ? 260 : 320;
+    const m = { t: 12, r: W < 560 ? 12 : 128, b: 28, l: 44 };
+    const iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const maxY = Math.min(1, Math.max(0.1, ...ativos.flatMap((s) => s.pontos.map((p) => p.y || 0))) * 1.12);
+    const passo = maxY > 0.5 ? 0.2 : maxY > 0.25 ? 0.1 : 0.05;
+    const topo = Math.ceil(maxY / passo) * passo;
+    const x = (v) => m.l + (xs.length === 1 ? iw / 2 : (xs.indexOf(v) / (xs.length - 1)) * iw);
+    const y = (v) => m.t + ih - (v / topo) * ih;
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico de linhas">`;
+    s += `<g class="grade">`;
+    for (let v = 0; v <= topo + 1e-9; v += passo) s += `<line x1="${m.l}" x2="${m.l + iw}" y1="${y(v)}" y2="${y(v)}"/><text x="${m.l - 8}" y="${y(v) + 4}" text-anchor="end">${Math.round(v * 100)}${rotuloY}</text>`;
+    s += `</g><line class="base" x1="${m.l}" x2="${m.l + iw}" y1="${y(0)}" y2="${y(0)}"/>`;
+    const cada = W < 560 && xs.length > 6 ? 2 : 1;
+    xs.forEach((v, i) => { if (i % cada === 0 || i === xs.length - 1) s += `<text x="${x(v)}" y="${H - 8}" text-anchor="middle">${v}</text>`; });
+    for (const se of ativos) {
+      const cor = css(se.cor);
+      const segs = []; let atual = [];
+      se.pontos.forEach((p) => { if (p.y == null) { if (atual.length) segs.push(atual); atual = []; } else atual.push(p); });
+      if (atual.length) segs.push(atual);
+      segs.forEach((sg) => { s += `<path d="${sg.map((p, i) => (i ? "L" : "M") + x(p.x) + " " + y(p.y)).join("")}" fill="none" stroke="${cor}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`; });
+      se.pontos.filter((p) => p.y != null).forEach((p) => { s += `<circle cx="${x(p.x)}" cy="${y(p.y)}" r="4" fill="${cor}" stroke="${css("--surface")}" stroke-width="2"/>`; });
+    }
+    // rótulos diretos no fim das linhas, afastados para não colidir
+    if (W >= 560) {
+      const rot = ativos.map((se) => { const u = [...se.pontos].reverse().find((p) => p.y != null); return { se, u, yy: y(u.y) }; }).sort((a, b) => a.yy - b.yy);
+      for (let i = 1; i < rot.length; i++) if (rot[i].yy - rot[i - 1].yy < 15) rot[i].yy = rot[i - 1].yy + 15;
+      rot.forEach(({ se, u, yy }) => { s += `<text x="${x(u.x) + 10}" y="${yy + 4}" style="fill:var(--text)">${esc(se.rotulo)} ${pct(u.y, 0)}</text>`; });
+    }
+    s += `<line id="mira" x1="0" x2="0" y1="${m.t}" y2="${m.t + ih}" stroke="${css("--muted")}" stroke-dasharray="3 3" visibility="hidden"/>`;
+    s += `<rect x="${m.l - 10}" y="0" width="${iw + 20}" height="${H}" fill="transparent" class="alvo"/></svg>`;
+    s += `<div class="legenda">${ativos.map((se) => `<span><i style="background:${css(se.cor)}"></i>${esc(se.rotulo)}</span>`).join("")}</div>`;
+    el.innerHTML = s;
+
+    const svg = el.querySelector("svg"), mira = svg.querySelector("#mira"), tip = $("#tooltip");
+    const mover = (ev) => {
+      const r = svg.getBoundingClientRect(), px = ((ev.clientX - r.left) / r.width) * W;
+      let melhor = xs[0]; xs.forEach((v) => { if (Math.abs(x(v) - px) < Math.abs(x(melhor) - px)) melhor = v; });
+      mira.setAttribute("x1", x(melhor)); mira.setAttribute("x2", x(melhor)); mira.setAttribute("visibility", "visible");
+      tip.innerHTML = `<b>${melhor}</b>` + ativos.map((se) => {
+        const p = se.pontos.find((q) => q.x === melhor);
+        return `<div class="linha"><span><i style="background:${css(se.cor)}"></i>${esc(se.rotulo)}</span><span>${p && p.y != null ? pct(p.y) : "–"}</span></div>` +
+          (p && p.det ? `<div class="linha"><span class="dica">${esc(p.det)}</span><span></span></div>` : "");
+      }).join("");
+      tip.hidden = false;
+      const tx = Math.min(ev.clientX + 14, innerWidth - tip.offsetWidth - 8);
+      tip.style.left = tx + "px"; tip.style.top = Math.max(8, ev.clientY - tip.offsetHeight - 12) + "px";
+    };
+    svg.querySelector(".alvo").addEventListener("pointermove", mover);
+    svg.querySelector(".alvo").addEventListener("pointerleave", () => { tip.hidden = true; mira.setAttribute("visibility", "hidden"); });
+
+    tabela.innerHTML = `<table><thead><tr><th>Ano</th>${ativos.map((se) => `<th class="n">${esc(se.rotulo)}</th>`).join("")}</tr></thead><tbody>` +
+      xs.map((v) => `<tr><td>${v}</td>${ativos.map((se) => { const p = se.pontos.find((q) => q.x === v); return `<td class="n">${p && p.y != null ? pct(p.y) : "–"}${p && p.det ? ` <span class="dica">(${esc(p.det)})</span>` : ""}</td>`; }).join("")}</tr>`).join("") + `</tbody></table>`;
+  }
+
+  /* ------------------------------------------------------------ 1. direções */
+  function direcoes() {
+    const [num, den, txt] = METRICAS[estado.dMetrica];
+    const rows = filtra(DIR);
+    const xs = [...new Set(DIR.map((r) => r.ano))].sort();
+    const series = NIVEIS.filter((n) => !(estado.uf && n.k === "nacional")).map((n) => {
+      const m = soma(rows.filter((r) => r.nivel === n.k), (r) => r.ano, [num, den]);
+      return { rotulo: n.rotulo, cor: n.cor, pontos: xs.map((a) => { const o = m.get(a); return { x: a, y: o && o[den] >= 5 ? o[num] / o[den] : null, det: o && o[den] ? `${int(o[num])} de ${int(o[den])}` : "" }; }) };
+    });
+    $("#direcoes .sub").textContent = `Percentual de mulheres ${txt}, por nível da direção e ano${estado.uf ? " (o nível nacional não tem recorte por UF)" : ""}.`;
+    linhas($("#g-direcoes"), { series, xs, tabela: $("#t-direcoes") });
+  }
+
+  /* ------------------------------------------------------------ 2. candidaturas */
+  function candidaturas() {
+    const g = estado.cGrupo;
+    const rows = filtra(CAND).filter((r) => r.cargo === estado.cCargo);
+    const xs = [...new Set(CAND.filter((r) => r.cargo === estado.cCargo).map((r) => r.ano))].sort();
+    const campos = ["candidaturas", "mulheres", "raca_informada", "negros", "eleitos", "eleitas", "eleitos_raca_informada", "eleitos_negros"];
+    const m = soma(rows, (r) => r.ano, campos);
+    const def = g === "mulheres"
+      ? [["Candidaturas", "mulheres", "candidaturas", "--s1"], ["Eleitos(as)", "eleitas", "eleitos", "--s2"]]
+      : [["Candidaturas", "negros", "raca_informada", "--s1"], ["Eleitos(as)", "eleitos_negros", "eleitos_raca_informada", "--s2"]];
+    const series = def.map(([rot, n, d, cor]) => ({ rotulo: rot, cor, pontos: xs.map((a) => { const o = m.get(a); return { x: a, y: o && o[d] >= 1 ? o[n] / o[d] : null, det: o && o[d] ? `${int(o[n])} de ${int(o[d])}` : "" }; }) }));
+    $("#c-nota").textContent = g === "negros"
+      ? "Pessoas negras = cor/raça preta ou parda. O TSE só informa cor/raça a partir de 2014, e o denominador inclui apenas candidaturas com cor/raça informada."
+      : "Candidaturas deferidas em eleições ordinárias, no 1º turno. Eleitos inclui eleitos por quociente partidário e por média.";
+    linhas($("#g-candidaturas"), { series, xs, tabela: $("#t-candidaturas") });
+  }
+
+  /* ------------------------------------------------------------ 3. partidos (barras) */
+  function partidos() {
+    const el = $("#g-partidos");
+    const rows = filtra(DIR, { partido: false }).filter((r) => r.nivel === estado.pNivel && r.ano === estado.pAno);
+    const m = soma(rows, (r) => r.partido, ["mulheres", "membros"]);
+    const dados = [...m].filter(([, o]) => o.membros >= 20).map(([p, o]) => ({ p, v: o.mulheres / o.membros, n: o.membros, mu: o.mulheres })).sort((a, b) => b.v - a.v);
+    if (!dados.length) { el.innerHTML = `<p class="vazio">Sem dados para este recorte.</p>`; return; }
+    const W = Math.max(320, el.clientWidth), bh = 18, gap = 6, m0 = { t: 8, r: 56, b: 24, l: 108 };
+    const H = m0.t + m0.b + dados.length * (bh + gap);
+    const iw = W - m0.l - m0.r, topo = Math.min(1, Math.ceil(Math.max(...dados.map((d) => d.v)) * 10) / 10 || 0.1);
+    const x = (v) => m0.l + (v / topo) * iw;
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Barras: percentual de mulheres por partido"><g class="grade">`;
+    for (let v = 0; v <= topo + 1e-9; v += 0.1) s += `<line x1="${x(v)}" x2="${x(v)}" y1="${m0.t}" y2="${H - m0.b}"/><text x="${x(v)}" y="${H - 6}" text-anchor="middle">${Math.round(v * 100)}%</text>`;
+    s += `</g>`;
+    dados.forEach((d, i) => {
+      const yy = m0.t + i * (bh + gap), sel = estado.partido === d.p, cor = !estado.partido || sel ? css("--bar") : css("--bar-dim");
+      const w = Math.max(2, x(d.v) - m0.l);
+      s += `<g class="barra" data-i="${i}"><rect x="0" y="${yy - gap / 2}" width="${W}" height="${bh + gap}" fill="transparent"/>` +
+        `<text x="${m0.l - 8}" y="${yy + bh / 2 + 4}" text-anchor="end" style="fill:var(${sel ? "--text" : "--text-2"});font-weight:${sel ? 700 : 400}">${esc(d.p)}</text>` +
+        `<path d="M${m0.l} ${yy}h${w - 4}a4 4 0 0 1 4 4v${bh - 8}a4 4 0 0 1 -4 4h${-(w - 4)}z" fill="${cor}"/>` +
+        `<text x="${m0.l + w + 6}" y="${yy + bh / 2 + 4}">${pct(d.v, 0)}</text></g>`;
+    });
+    s += `</svg>`;
+    el.innerHTML = s;
+    const tip = $("#tooltip");
+    el.querySelectorAll(".barra").forEach((g) => {
+      g.addEventListener("pointermove", (ev) => {
+        const d = dados[+g.dataset.i];
+        tip.innerHTML = `<b>${esc(d.p)}</b><div class="linha"><span>Mulheres</span><span>${pct(d.v)}</span></div><div class="linha"><span>Membros</span><span>${int(d.mu)} de ${int(d.n)}</span></div>`;
+        tip.hidden = false;
+        tip.style.left = Math.min(ev.clientX + 14, innerWidth - tip.offsetWidth - 8) + "px";
+        tip.style.top = Math.max(8, ev.clientY - tip.offsetHeight - 12) + "px";
+      });
+      g.addEventListener("pointerleave", () => (tip.hidden = true));
+    });
+  }
+
+  /* ------------------------------------------------------------ 4. arquivos */
+  function arquivos() {
+    const grupo = estado.aGrupo;
+    const lista = ARQ.filter((a) => grupo === "finais" ? !/^etapa[12]_/.test(a.arquivo) : a.arquivo.startsWith(grupo + "_"));
+    const mb = (b) => b >= 1e9 ? (b / 1e9).toLocaleString("pt-BR", { maximumFractionDigits: 2 }) + " GB" : (b / 1e6).toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + " MB";
+    const dic = (n) => { const base = n.replace(/\.csv\.gz$/, "").replace(/_\d{4}$/, ""); return grupo === "finais" ? `${REPO}/blob/main/3%20Produtos%20finais/dicionarios/dicionario_${base}_variaveis.csv` : null; };
+    $("#t-arquivos").innerHTML = `<table><thead><tr><th>Arquivo</th><th class="n">Tamanho (.gz)</th>${grupo === "finais" ? "<th>Dicionário</th>" : "<th>Origem</th>"}</tr></thead><tbody>` +
+      lista.map((a) => `<tr><td><a href="${REPO}/releases/latest/download/${encodeURIComponent(a.arquivo)}">${esc(a.arquivo)}</a></td><td class="n">${mb(a.bytes)}</td>` +
+        (grupo === "finais" ? `<td><a href="${dic(a.arquivo)}">variáveis</a></td>` : `<td class="dica">${esc(a.origem)}</td>`) + `</tr>`).join("") + `</tbody></table>`;
+  }
+})();

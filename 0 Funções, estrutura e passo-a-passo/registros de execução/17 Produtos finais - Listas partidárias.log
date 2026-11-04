@@ -1,0 +1,108 @@
+here() starts at <raiz do projeto>
+── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
+✔ dplyr     1.2.0     ✔ readr     2.1.6
+✔ forcats   1.0.1     ✔ stringr   1.6.0
+✔ ggplot2   4.0.3     ✔ tibble    3.3.1
+✔ lubridate 1.9.5     ✔ tidyr     1.3.2
+✔ purrr     1.2.1     
+── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+✖ dplyr::filter() masks stats::filter()
+✖ dplyr::lag()    masks stats::lag()
+ℹ Use the conflicted package (<http://conflicted.r-lib.org/>) to force all conflicts to become errors
+
+Anexando pacote: 'data.table'
+
+Os seguintes objetos são mascarados por 'package:lubridate':
+
+    hour, isoweek, isoyear, mday, minute, month, quarter, second, wday,
+    week, yday, year
+
+Os seguintes objetos são mascarados por 'package:dplyr':
+
+    between, first, last
+
+O seguinte objeto é mascarado por 'package:purrr':
+
+    transpose
+
+
+=== bd_partidos_camara : 2933 listas ===
+     ano listas candidatos pct_cota dri_genero_candidatos dri_genero_receitas
+   <int>  <int>      <int>    <num>                 <num>               <num>
+1:  2010    609       4888     25.3                -0.638              -0.761
+2:  2014    768       5870     48.4                -0.450              -0.663
+3:  2018    859       7628     56.3                -0.406              -0.494
+4:  2022    697       9455     93.4                -0.252              -0.278
+   dri_genero_eleitos dri_racial_candidatos dri_racial_eleitos
+                <num>                 <num>              <num>
+1:             -0.782                   NaN                NaN
+2:             -0.761                -0.174             -0.553
+3:             -0.663                -0.216             -0.508
+4:             -0.659                -0.106             -0.480
+   dirigentes_candidatos com_diretorio
+                   <int>         <int>
+1:                     0             0
+2:                     0             0
+3:                   951           759
+4:                   912           609
+     ano listas com_governador com_senado com_presidente
+   <int>  <int>          <int>      <int>          <int>
+1:  2010    609            143        182            173
+2:  2014    768            151        157            246
+3:  2018    859            178        267            325
+4:  2022    697            188        194            227
+
+=== bd_partidos_assembleias : 2958 listas ===
+     ano listas candidatos pct_cota dri_genero_candidatos dri_genero_receitas
+   <int>  <int>      <int>    <num>                 <num>               <num>
+1:  2010    660      12609     22.1                -0.605              -0.712
+2:  2014    803      15258     48.7                -0.451              -0.689
+3:  2018    839      16941     59.1                -0.411              -0.434
+4:  2022    656      15799     92.2                -0.313              -0.324
+   dri_genero_eleitos dri_racial_candidatos dri_racial_eleitos
+                <num>                 <num>              <num>
+1:             -0.766                   NaN                NaN
+2:             -0.762                -0.157             -0.429
+3:             -0.690                -0.161             -0.426
+4:             -0.672                -0.066             -0.340
+   dirigentes_candidatos com_diretorio
+                   <int>         <int>
+1:                     0             0
+2:                     0             0
+3:                  1526           744
+4:                  1068           577
+     ano listas com_governador com_senado com_presidente
+   <int>  <int>          <int>      <int>          <int>
+1:  2010    660            144        186            188
+2:  2014    803            152        158            251
+3:  2018    839            178        262            310
+4:  2022    656            179        191            215
+
+=== bd_partidos_vereanca : 228433 listas ===
+     ano listas candidatos pct_cota dri_genero_candidatos dri_genero_receitas
+   <int>  <int>      <int>    <num>                 <num>               <num>
+1:  2012  70201     414021     54.1                -0.369              -0.558
+2:  2016  76273     435698     54.6                -0.365              -0.499
+3:  2020  40046     488282     94.6                -0.296              -0.364
+4:  2024  41913     413306     97.3                -0.285              -0.305
+   dri_genero_eleitos dri_racial_candidatos dri_racial_eleitos
+                <num>                 <num>              <num>
+1:             -0.739                   NaN                NaN
+2:             -0.733                -0.085             -0.153
+3:             -0.692                -0.097             -0.164
+4:             -0.650                -0.040             -0.140
+   dirigentes_candidatos com_diretorio
+                   <int>         <int>
+1:                     0             0
+2:                 97764         71853
+3:                 74954         40043
+4:                 61208         41862
+     ano listas com_prefeitura eleitos_prefeitura
+   <int>  <int>          <int>              <int>
+1:  2012  70201          14142               5472
+2:  2016  76273          15009               5448
+3:  2020  40046          16572               5185
+4:  2024  41913          13852               5322
+
+Bancos salvos em: <raiz do projeto>/3 Produtos finais/bancos 
+Houve 12 avisos (use warnings() para vê-los)

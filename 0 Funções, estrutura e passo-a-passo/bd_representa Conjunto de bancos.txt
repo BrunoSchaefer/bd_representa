@@ -1,0 +1,198 @@
+bd_representa: Conjunto de bancos de dados sobre partidos e eleições no Brasil
+
+
+Objetivo: Construir um conjunto de bancos de dados de fácil acesso e visualização sobre partidos políticos e eleições no Brasil
+
+
+Pasta 0: Funções, estrutura e passo-a-passo
+
+
+Pasta 1: Pesquisas individuais
+
+(a) Etapa 1: seleção, filtragem e categorização de bancos de dados
+
+Coleta direta: Portal de Dados Abertos do TSE
+
+Coleta indireta: 
+
+- Uso de pacotes como basedosdados, electionsBR e cepespedata. 
+- Uso da literatura especializada em Ciência Política
+
+
+Bancos de dados
+
+(1a)
+
+Dimensão partidos
+
+Dados de dirigentes partidários ao nível de município, estado e nacional 
+
+Dados de receitas e despesas dos partidos ao nível de município, estado e nacional
+
+Dados de ideologia, democracia interna e institucionalização ao nível nacional
+
+
+(2a)
+
+Dimensão eleições 
+
+Dados de características dos candidatos ao nível de município e estado 
+
+Dados de receitas e despesas dos candidatos ao nível de município e estado 
+
+Dados de bens dos candidatos ao nível de município e estado 
+
+Dados de resultados eleitorais dos candidatos ao nível de município e estado (calcular incumbência - se o mesmo candidato foi eleito para o mesmo cargo na eleição anterior)
+
+Dados de vagas, comparecimento eleitoral e perfil do eleitorado ao nível de município e estado 
+
+
+(3a)
+
+Dimensão socioeconômica
+
+Dados de características socioeconômicas ao nível de município e estado (PIB, população, 
+
+(4a) Produtos 
+
+Bancos ao nível de dirigentes (municipal, estadual e nacional)
+
+Bancos ao nível de diretórios (municipal, estadual e nacional)
+
+Bancos ao nível de candidatos (eleições municipais - vereador e prefeito e gerais - deputado estadual/distrital, deputado federal, senador e governador) - Foco em eleições ordinárias e no primeiro turno
+
+Banco ao nível do distrito (municipal e estadual) com as informações sobre vagas, comparecimento eleitoral e perfil do eleitorado
+
+Banco ao nível do distrito (municipal e estadual) com as informações socioeconômicas
+
+
+(5a) Validação
+
+Validação da coleta dos dados eleitorais pelos bancos originais do TSE (por amostragem)
+
+
+- Documentação de todas as etapas
+
+
+Pasta 2: Agregação dados
+
+
+(b) Etapa 2 - Junção dos bancos de dados
+
+(1b) Junção dos bancos de dados na dimensão dos partidos 
+
+Informações dos partidos: no nível do diretório (a) e de dirigente (b) (por ente federativo) 
+
+- Agregação das informações nacionais sobre ideologia, democracia interna e institucionalização (quando disponíveis)
+
+- Agregação das informações socioeconômicas e com as informações sobre vagas, comparecimento eleitoral e perfil do eleitorado
+
+(2b) Junção dos bancos de dados na dimensão de eleições
+
+Informações de eleições: no nível do candidato cargo e respectivo nível federativo (distrito), estado ou município. Incluindo características, receitas, despesas, bens e resultados. 
+
+- Cálculo do total de votos do candidato em relação ao cargo-distrito (total de votos válidos) e em relação ao partido no cargo-distrito (total de votos válidos do partido). 
+
+- Agregação das informações nacionais dos partidos sobre ideologia, democracia interna e institucionalização (quando disponíveis)
+
+- Agregação das informações socioeconômicas e com as informações sobre vagas, comparecimento eleitoral e perfil do eleitorado
+
+
+Pasta 3: Produtos finais
+
+(c) Etapa 3 - Produtos Finais
+
+
+(1c)
+
+Banco Dirigentes: informações dos dirigentes partidários brasileiros, produto da fase 1b. A unidade de análise é ano-nome-partido-distrito contendo tudo o que se pode saber considerando o nível de análise e características mais agregadas (características do partido no nível nacional, características do partido ao nível do distrito, características do distrito informações socioeconômicas e com as informações sobre vagas, comparecimento eleitoral e perfil do eleitorado - como esse dado está organizado por eleição, sempre imputar o valor no ano seguinte: 2012 vale para 2013, 2014 para 2015. No caso de vagas e comparecimento, levar em conta que a variável deve ter o nome do cargo)
+
+Obs: cruzar o banco com as informações eleitorais por nome (aplicar algum algoritmo de similaridade) para verificar se o dirigente é/foi candidato, qual cargo e qual o resultado
+
+Outras estatísticas importantes: dirigente estava no cargo anteriormente, mesmo cargo, outro, subiu (?)
+
+
+Derivados:
+
+bd_dirigentes_nacional
+
+bd_dirigentes_estadual
+
+bd_dirigentes_municipal
+  
+
+Banco Diretórios: informações dos diretórios partidários brasileiros, produto da fase 1b. A unidade de análise é ano-partido-distrito contendo tudo o que se pode saber considerando o nível de análise e características mais agregadas (características do partido no nível nacional, características do distrito informações socioeconômicas e com as informações sobre vagas, comparecimento eleitoral e perfil do eleitorado - como esse dado está organizado por eleição, sempre imputar o valor no ano seguinte: 2012 vale para 2013, 2014 para 2015. No caso de vagas e comparecimento, levar em conta que a variável deve ter o nome do cargo)
+
+Obs: cruzar o banco com as informações eleitorais por nome (aplicar algum algoritmo de similaridade) para verificar o total de dirigentes que estão/foram candidatos, qual cargo e qual o resultado
+
+Outras estatísticas importantes: total de dirigentes, total de mulheres, total de cargos de decisão, total de mulheres em cargos de decisão, turnover geral, turnover de cargos de decisão, turnover de homens, turnover de mulher, turnover de cargos de decisão (mulheres)
+
+
+Derivados:
+
+bd_diretorios_nacional
+
+bd_diretorios_estadual
+
+bd_diretorios_municipal 
+
+
+(2c)
+
+
+Banco Candidatos: informações dos candidatos brasileiros, produto da fase 1b. A unidade de análise é ano-candidato-cargo-partido-distrito contendo tudo o que se pode saber sobre o nível de análise e características mais agregadas (características do partido no nível nacional, características do partido ao nível do distrito, características do distrito informações socioeconômicas e com as informações sobre vagas, comparecimento eleitoral e perfil do eleitorado)
+
+
+bd_candidatos_governadoria
+
+bd_candidatos_senado
+
+bd_candidatos_camara
+
+bd_candidatos_assembleia (Agregação de deputados distritais e estaduais)
+
+bd_candidatos_prefeitura
+
+bd_candidatos_vereanca
+
+(3c)
+
+
+Banco Distritos
+
+Banco por distrito 
+
+O objetivo aqui é calcular o índice de equidade de gênero e o índice de equidade racial (só para cargos proporcionais - deputado federal, deputado estadual/distrital e vereador) e agregar as informações possíveis sobre os partidos no distrito (total de partidos, total de cargos, total de cargos de decisão, total de mulheres em cargos de decisão), e sobre eleições no distrito (tem mulher em cargo majoritário - prefeitura ou governo do estado, tem pessoa negra em cargo majoritário)
+
+A partir de 
+
+O denominador de gênero é o perfil do eleitorado
+
+O denominador de raça é o perfil da população
+
+Os numeradores são:
+
+proporção de candidatos por grupo 
+
+proporção de financiamento (receitas) por grupo
+
+proporção de financiamento (receitas partidárias) por grupo 
+
+proporção de financiamento (receitas da direção partidária) por grupo 
+
+proporção de eleitos por grupo 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,13 @@
+# Dados ficam nas Releases, não no Git
+*.csv.gz
+*.rds
+*.RData
+*.Rhistory
+.Rhistory
+.Rproj.user/
+dados_brutos/
+bancos/
+# chave de pseudonimização: NUNCA versionar
+chave_hmac*.txt
+__pycache__/
+~$*

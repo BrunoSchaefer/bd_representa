@@ -1,0 +1,15 @@
+bd_representa — Conjunto de bancos de dados sobre partidos e eleições no Brasil
+Bruno Schaefer (IESP-UERJ)
+
+Por onde começar
+  1. Leia o passo-a-passo: "0 Funções, estrutura e passo-a-passo/0 Estrutura de Montagem do Banco de Dados.Rmd"
+  2. Os bancos prontos para análise estão em "3 Produtos finais/bancos" (arquivos bd_*).
+  3. Para reproduzir: abra "Dirigentes Partidários.Rproj" e rode
+     "0 Funções, estrutura e passo-a-passo/0_rodar_etapas.R".
+
+Pastas
+  0 Funções, estrutura e passo-a-passo   documentação, funções, caminhos e executor
+  1 Pesquisas individuais                Etapa 1: coleta, filtragem e categorização de cada fonte
+  2 Agregação dos dados                  Etapa 2: junção dos bancos (partidos e eleições)
+  3 Produtos finais                      Etapa 3: bancos finais (dirigentes, diretórios, candidatos, distritos)
+  _arquivo                               versões antigas, não usadas pelos códigos

@@ -1,0 +1,126 @@
+---
+title: "6_1 Financiamento Eleitoral Gerais - validação"
+author: "Bruno Schaefer (IESP-UERJ)"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Objetivo
+
+Comparar o banco `financiamento_gerais.xlsx` (código 6_1, feito com a basedosdados) com os arquivos de prestação de contas do Portal de Dados Abertos do TSE, para uma amostra: **eleição de 2022, candidatos do Rio de Janeiro**.
+
+Os valores do banco produzido estão deflacionados (IPCA de 12/2025, com referência em dezembro do ano da eleição). Como o fator de deflação é o mesmo para todos os candidatos de um ano, a razão entre o valor produzido e o valor nominal do TSE deve ser igual para todos. A validação estima esse fator pela mediana das razões, converte os valores produzidos de volta para valores nominais e compara candidato a candidato.
+
+Critério: diferença de até 1% por candidato; o banco é considerado OK se pelo menos 99% dos candidatos estão dentro da tolerância e o total difere menos de 1%.
+
+## Pacotes e amostra
+
+```{r}
+
+library(tidyverse)
+library(openxlsx)
+library(here)
+
+source(here("0 Funções, estrutura e passo-a-passo", "0_funcoes_auxiliares.R"))
+
+ano_amostra <- 2022
+uf_amostra  <- "RJ"
+zip_tse     <- file.path(pasta$brutos_financ_eleitoral,
+                    "prestacao_de_contas_eleitorais_candidatos_2022.zip")
+
+```
+
+## Banco produzido
+
+```{r}
+
+produzido <- read.xlsx(file.path(pasta$prod_candidatos, "financiamento_gerais.xlsx")) |>
+  filter(ano == ano_amostra, sigla_uf == uf_amostra) |>
+  mutate(numero_candidato = as.character(numero_candidato))
+
+count(produzido, cargo)
+
+```
+
+## Receitas
+
+```{r}
+
+rec_tse <- ler_zip_tse(zip_tse, paste0("receitas_candidatos_", ano_amostra, "_", uf_amostra, ".csv"))
+
+count(rec_tse, NM_TIPO_ELEICAO, ST_TURNO)
+
+rec_tse_cand <- rec_tse |>
+  mutate(
+    cargo            = texto_bd(DS_CARGO),
+    numero_candidato = NR_CANDIDATO,
+    valor            = converter_valor_tse(VR_RECEITA),
+    publico          = texto_bd(DS_FONTE_RECEITA) %in% c("fundo especial", "fundo partidario")
+  ) |>
+  group_by(cargo, numero_candidato) |>
+  summarise(receitas_tse  = sum(valor, na.rm = TRUE),
+            publicos_tse  = sum(valor[publico], na.rm = TRUE),
+            .groups = "drop")
+
+comp_rec <- full_join(
+  select(produzido, cargo, numero_candidato, soma_receitas, soma_recursos_publicos),
+  rec_tse_cand,
+  by = c("cargo", "numero_candidato")
+)
+
+# Fator de deflação estimado (mediana da razão produzido / TSE)
+fator <- comp_rec |>
+  filter(soma_receitas > 0, receitas_tse > 0) |>
+  summarise(fator = median(soma_receitas / receitas_tse)) |>
+  pull(fator)
+
+fator
+
+# Fator esperado pelo deflateBR (requer internet)
+tryCatch(
+  deflateBR::ipca(1, as.Date(paste0(ano_amostra, "-12-31")), "12/2025"),
+  error = function(e) "deflateBR indisponível"
+)
+
+comp_total <- comparar_valores(
+  comp_rec |> transmute(cargo, numero_candidato, saida = soma_receitas / fator, tse = receitas_tse),
+  "Receita total por candidato (valores nominais)"
+)
+head(comp_total, 10)
+
+comp_publico <- comparar_valores(
+  comp_rec |> transmute(cargo, numero_candidato, saida = soma_recursos_publicos / fator, tse = publicos_tse),
+  "Recursos públicos (FEFC + Fundo Partidário) por candidato"
+)
+head(comp_publico, 10)
+
+```
+
+## Despesas
+
+O TSE divulga despesas contratadas e despesas pagas; o arquivo de despesas pagas não identifica o candidato. A comparação é feita com as despesas contratadas.
+
+```{r}
+
+desp_tse <- ler_zip_tse(zip_tse, paste0("despesas_contratadas_candidatos_", ano_amostra, "_", uf_amostra, ".csv"))
+
+desp_tse_cand <- desp_tse |>
+  mutate(cargo            = texto_bd(DS_CARGO),
+         numero_candidato = NR_CANDIDATO,
+         valor            = converter_valor_tse(VR_DESPESA_CONTRATADA)) |>
+  group_by(cargo, numero_candidato) |>
+  summarise(despesas_tse = sum(valor, na.rm = TRUE), .groups = "drop")
+
+comp_desp <- comparar_valores(
+  full_join(select(produzido, cargo, numero_candidato, despesas_total_can),
+            desp_tse_cand, by = c("cargo", "numero_candidato")) |>
+    transmute(cargo, numero_candidato, saida = despesas_total_can / fator, tse = despesas_tse),
+  "Despesas contratadas por candidato"
+)
+head(comp_desp, 10)
+
+```

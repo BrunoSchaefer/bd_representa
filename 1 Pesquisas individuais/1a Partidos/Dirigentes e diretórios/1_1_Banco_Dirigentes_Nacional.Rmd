@@ -1,0 +1,636 @@
+---
+title: "1.1 Banco Dirigentes Nacional"
+author: "Bruno Schaefer (IESP-UERJ)"
+date: "2026-06-10"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introdução
+
+### Pacotes
+
+```{r pacotes}
+library(here)
+source(here("0 Funções, estrutura e passo-a-passo", "0_pastas.R"))
+library(data.table)
+library(stringr)
+library(lubridate)
+library(stringi)
+library(openxlsx)
+```
+
+## Carregar dados
+
+Dados baixados de: https://dadosabertos.tse.jus.br/dataset/delegados-partidarios/resource/771736c9-f28a-4463-9b69-d5803c07dec3
+
+Data 29/11/2025
+
+```{r carregar}
+# Importação ------------------------------------------------------------------
+pasta_dirigentes <- pasta$brutos_dirigentes
+
+arquivos <- list.files(
+  path       = pasta_dirigentes,
+  pattern    = "(?i)\\.csv$",
+  full.names = TRUE
+)
+
+dados_dirigentes <- rbindlist(
+  lapply(arquivos, function(f) {
+    dt <- fread(f, sep = ";", encoding = "Latin-1", colClasses = "character")
+    dt[, arquivo_origem := basename(f)]
+    dt[, partido := str_remove(basename(f), "^orgao_partidario_") |>
+         str_remove("(?i)\\.csv$")]
+    dt
+  }),
+  fill = TRUE
+)
+
+# Remover linhas duplicadas ---------------------------------------------------
+# Os arquivos do TSE trazem cerca de 208 mil linhas exatamente repetidas
+# (≈ 4% do total), que inflariam as contagens de membros.
+n_antes <- nrow(dados_dirigentes)
+dados_dirigentes <- unique(dados_dirigentes)
+cat("Linhas duplicadas removidas:", n_antes - nrow(dados_dirigentes), "\n")
+
+summary(dados_dirigentes)
+```
+
+## Tratamento de dados
+
+### Abrangência e filtragem
+
+Esta etapa filtra o banco para manter apenas os registros de abrangência nacional e remove acentos de todas as colunas de texto, padronizando a codificação para Latin-ASCII. Isso evita problemas de comparação de strings nas etapas seguintes.
+
+As direções nacionais nem sempre são registradas com `SG_UF = "BR"`: a partir de 2022 várias aparecem com a UF da sede (DF ou SP), como UNIÃO, PRD, MISSÃO e as direções do PV desde 2023. Como é a abrangência que define o nível do órgão, a UF original é guardada em `SG_UF_REGISTRO` e `SG_UF` é padronizada para "BR". Sem isso, essas direções eram descartadas no filtro `SG_UF == "BR"` mais adiante.
+
+```{r filtragem}
+table(dados_dirigentes$DS_TIPO_ABRANGENCIA)
+
+# Filtrar abrangência
+dados_dirigentes_nr <- dados_dirigentes[
+  DS_TIPO_ABRANGENCIA %in% c("NACIONAL")
+]
+
+# UF de registro das direções nacionais ---------------------------------------
+table(dados_dirigentes_nr$SG_UF)
+dados_dirigentes_nr[, SG_UF_REGISTRO := SG_UF]
+dados_dirigentes_nr[, SG_UF := "BR"]
+
+# Remover acentos nas colunas texto
+cols_chr <- names(dados_dirigentes_nr)[sapply(dados_dirigentes_nr, is.character)]
+
+dados_dirigentes_nr[,
+  (cols_chr) := lapply(.SD, stri_trans_general, id = "Latin-ASCII"),
+  .SDcols = cols_chr
+]
+```
+
+### Datas e expansão por ano
+
+#### Critério mais restritivo
+
+O banco `dirigente_ano` tem como unidade de análise o **ano-dirigente-partido**. Para ser incluído em determinado ano, o dirigente precisa ter exercido o cargo por pelo menos **183 dias** dentro daquele ano calendário. O período ativo é calculado como a interseção entre o intervalo do mandato e o intervalo do ano (1º de janeiro a 31 de dezembro). Dirigentes sem data de fim registrada são tratados como em exercício até 31/12/2025. Como o join não-equi do `data.table` sobrescreve as colunas utilizadas na condição de cruzamento, as datas originais são preservadas em colunas auxiliares (`dt_inicio`, `dt_fim2`) antes do join, sendo essas usadas no cálculo dos dias ativos. Este banco é indicado para analisar **quem comandava o partido** a cada ano.
+
+Registros com data de início implausível (anterior a 1980, como 30/12/1899 ou 16/03/0208) são descartados, pois não é possível saber em que anos estiveram ativos.
+
+Cada pessoa recebe um identificador (`id_membro`): o título eleitoral, ou o sequencial do membro no TSE quando o título está ausente. O TSE mantém várias versões do mesmo vínculo (mesmo órgão, pessoa e cargo) que diferem apenas na data de fim; por isso, após o cruzamento com os anos, mantém-se uma única linha por **ano-órgão-pessoa-cargo**, a de maior permanência no ano. Sem esse passo, uma mesma pessoa era contada até quatro vezes no mesmo diretório (ex.: PDT nacional 2019–2021, 1.107 linhas para 351 pessoas).
+
+```{r datas_restritivo}
+# Identificador da pessoa -----------------------------------------------------
+dados_dirigentes_nr[, id_membro := fifelse(
+  grepl("^[0-9]+$", NR_TITULO_ELEITORAL_MEMBRO) &
+    !grepl("^0+$", NR_TITULO_ELEITORAL_MEMBRO),
+  NR_TITULO_ELEITORAL_MEMBRO,
+  paste0("SQ", SQ_MEMBRO)
+)]
+
+# Datas -----------------------------------------------------------------------
+dados_dirigentes_nr[, dt_inicio := dmy(DT_INICIO_EXERCICIO_MEMBRO)]
+dados_dirigentes_nr[
+  DT_FIM_EXERCICIO_MEMBRO == "#NULO",
+  DT_FIM_EXERCICIO_MEMBRO := NA_character_
+]
+dados_dirigentes_nr[, dt_fim := dmy(DT_FIM_EXERCICIO_MEMBRO)]
+
+# Datas de início ausentes ou implausíveis
+cat("Registros sem data de início válida:",
+    dados_dirigentes_nr[is.na(dt_inicio) | year(dt_inicio) < 1980, .N], "\n")
+dados_dirigentes_nr <- dados_dirigentes_nr[!is.na(dt_inicio) & year(dt_inicio) >= 1980]
+
+ultimo_dia <- as.Date("2025-12-31")
+dados_dirigentes_nr[, dt_fim2 := fifelse(is.na(dt_fim), ultimo_dia, dt_fim)]
+
+# Cópias usadas no join (serão sobrescritas pelo data.table) ------------------
+dados_dirigentes_nr[, join_inicio := dt_inicio]
+dados_dirigentes_nr[, join_fim    := dt_fim2]
+
+# Expansão por ano ------------------------------------------------------------
+years   <- 2000:2025
+anos_dt <- data.table(
+  ANO        = years,
+  start_date = as.Date(paste0(years, "-01-01")),
+  end_date   = as.Date(paste0(years, "-12-31"))
+)
+
+# Join não-equi ---------------------------------------------------------------
+base_join <- dados_dirigentes_nr[
+  anos_dt,
+  on = .(join_inicio <= end_date, join_fim >= start_date),
+  nomatch = 0,
+  allow.cartesian = TRUE
+]
+
+# Dias ativos usando colunas preservadas --------------------------------------
+base_join[, inicio_no_ano := pmax(dt_inicio, as.Date(paste0(ANO, "-01-01")))]
+base_join[, fim_no_ano    := pmin(dt_fim2,   as.Date(paste0(ANO, "-12-31")))]
+base_join[, dias_ativos   := as.integer(fim_no_ano - inicio_no_ano) + 1L]
+
+# Versões repetidas do mesmo vínculo: uma linha por ano-órgão-pessoa-cargo -----
+n_antes <- nrow(base_join)
+setorder(base_join, -dias_ativos)
+base_join <- unique(
+  base_join,
+  by = c("ANO", "SQ_ORGAO_PARTIDARIO", "id_membro", "DS_CARGO_MEMBRO")
+)
+cat("Versões repetidas de vínculos removidas:", n_antes - nrow(base_join), "\n")
+
+dirigente_ano <- base_join[dias_ativos >= 183]
+
+cat("dirigente_ano (>= 183 dias):", nrow(dirigente_ano), "\n")
+summary(dirigente_ano$dias_ativos)
+```
+
+#### Critério mais amplo
+
+O banco `dirigente_ano2` tem a mesma unidade de análise **ano-dirigente-partido**, mas com critério mais inclusivo: o dirigente é registrado em determinado ano se exerceu o cargo em **qualquer momento** daquele ano, mesmo que por apenas um dia. A coluna `dias_ativos` é mantida para fins diagnósticos e para futuras análises de duração. Este banco é indicado para analisar **rotatividade**, entrada e saída de dirigentes, e sobreposição de mandatos.
+
+```{r datas_amplo}
+dirigente_ano2 <- copy(base_join)
+
+cat("dirigente_ano2 (qualquer dia):", nrow(dirigente_ano2), "\n")
+summary(dirigente_ano2$dias_ativos)
+```
+
+### Tipos de cargos
+
+#### Banco restritivo
+
+Esta etapa cria indicadores binários de cargo para o banco restritivo. A variável `setorial_mulher` identifica cargos ligados à secretaria ou coordenação de mulheres. A variável `presidente` identifica presidentes titulares, excluindo vice-presidentes, presidentes honorários, de conselhos, setoriais e outros cargos que contenham "president" mas não correspondam à presidência executiva do partido. No nível nacional também são excluídos os presidentes de diretórios estaduais, distritais e municipais que têm assento no diretório nacional (ex.: "PRESIDENTE DE DIRETORIO ESTADUAL"). A variável `tesoureiro` identifica tesoureiros titulares, excluindo adjuntos, suplentes, vogais e segundos e terceiros tesoureiros. A variável `cargo_decisao` agrega presidente e tesoureiro como cargos de decisão.
+
+```{r cargos_restritivo}
+## Setorial mulher ------------------------------------------------------------
+dirigente_ano[, setorial_mulher :=
+  fifelse(grepl("MULH", DS_CARGO_MEMBRO, ignore.case = TRUE), 1L, 0L)
+]
+
+## Presidente -----------------------------------------------------------------
+dirigente_ano[, presidente :=
+  fifelse(
+    grepl("PRESIDENT|PRESIDENC", DS_CARGO_MEMBRO, ignore.case = TRUE) &
+      !grepl(
+        paste(c(
+          "VICE", "HONRA", "CONSELHO", "ETICA", "FISCAL",
+          "JOVEM", "JUVENTUDE", "MULHER", "MOVIMENTO",
+          "FUNDAC", "INTERIN", "AFASTAD", "EXERCICIO",
+          "LICENCIAD", "SUBSTITUT", "PORTA VOZ",
+          "COMUNITARIO", "SETORIAL", "SECRETARIA",
+          "COORDENADOR", "MEMBRO", "CONSULTIVO",
+          "EMPRESARIAL", "PARLAMENTAR", "FRENTE",
+          "INSTITUTO", "AFRO", "DIVERSIDADE", "ESPORTE",
+          "MAPI", "JS/PDT", "EX-PRESIDENTE",
+          "AMT/PDT", "PRESIDENTE DE FORMACAO POLITICA",
+          # presidentes de diretórios estaduais com assento no nacional
+          "ESTADUAL", "DISTRITAL", "MUNICIPAL"
+        ), collapse = "|"),
+        DS_CARGO_MEMBRO, ignore.case = TRUE
+      ),
+    1L, 0L
+  )
+]
+
+## Tesoureiro -----------------------------------------------------------------
+dirigente_ano[, tesoureiro :=
+  fifelse(
+    grepl("TESOUR", DS_CARGO_MEMBRO, ignore.case = TRUE) &
+      !grepl(
+        paste(c(
+          "ADJUNT", "SUBSTITUT", "SUPLENTE", "VICE",
+          "COORDENACAO", "MEMBRO", "VOGAL",
+          "LICENCIAD", "EXERCICIO",
+          # segundos e terceiros tesoureiros (equivalentes a adjuntos)
+          "SEGUNDO", "TERCEIRO", "2. TESOUR", "3. TESOUR", "2O TESOUR", "3O TESOUR"
+        ), collapse = "|"),
+        DS_CARGO_MEMBRO, ignore.case = TRUE
+      ),
+    1L, 0L
+  )
+]
+
+## Cargo de decisão -----------------------------------------------------------
+dirigente_ano[, cargo_decisao := fifelse(presidente == 1L | tesoureiro == 1L, 1L, 0L)]
+
+## Verificação ----------------------------------------------------------------
+cat("Setorial mulher:\n"); print(table(dirigente_ano$setorial_mulher))
+cat("Presidente:\n");      print(table(dirigente_ano$presidente))
+cat("Tesoureiro:\n");      print(table(dirigente_ano$tesoureiro))
+cat("Cargo decisão:\n");   print(table(dirigente_ano$cargo_decisao))
+```
+
+#### Banco amplo
+
+Esta etapa replica os mesmos indicadores de cargo para o banco amplo (`dirigente_ano2`), utilizando os mesmos critérios de inclusão e exclusão definidos acima para garantir comparabilidade entre os dois bancos.
+
+```{r cargos_amplo}
+## Setorial mulher ------------------------------------------------------------
+dirigente_ano2[, setorial_mulher :=
+  fifelse(grepl("MULH", DS_CARGO_MEMBRO, ignore.case = TRUE), 1L, 0L)
+]
+
+## Presidente -----------------------------------------------------------------
+dirigente_ano2[, presidente :=
+  fifelse(
+    grepl("PRESIDENT|PRESIDENC", DS_CARGO_MEMBRO, ignore.case = TRUE) &
+      !grepl(
+        paste(c(
+          "VICE", "HONRA", "CONSELHO", "ETICA", "FISCAL",
+          "JOVEM", "JUVENTUDE", "MULHER", "MOVIMENTO",
+          "FUNDAC", "INTERIN", "AFASTAD", "EXERCICIO",
+          "LICENCIAD", "SUBSTITUT", "PORTA VOZ",
+          "COMUNITARIO", "SETORIAL", "SECRETARIA",
+          "COORDENADOR", "MEMBRO", "CONSULTIVO",
+          "EMPRESARIAL", "PARLAMENTAR", "FRENTE",
+          "INSTITUTO", "AFRO", "DIVERSIDADE", "ESPORTE",
+          "MAPI", "JS/PDT", "EX-PRESIDENTE",
+          "AMT/PDT", "PRESIDENTE DE FORMACAO POLITICA",
+          # presidentes de diretórios estaduais com assento no nacional
+          "ESTADUAL", "DISTRITAL", "MUNICIPAL"
+        ), collapse = "|"),
+        DS_CARGO_MEMBRO, ignore.case = TRUE
+      ),
+    1L, 0L
+  )
+]
+
+## Tesoureiro -----------------------------------------------------------------
+dirigente_ano2[, tesoureiro :=
+  fifelse(
+    grepl("TESOUR", DS_CARGO_MEMBRO, ignore.case = TRUE) &
+      !grepl(
+        paste(c(
+          "ADJUNT", "SUBSTITUT", "SUPLENTE", "VICE",
+          "COORDENACAO", "MEMBRO", "VOGAL",
+          "LICENCIAD", "EXERCICIO",
+          # segundos e terceiros tesoureiros (equivalentes a adjuntos)
+          "SEGUNDO", "TERCEIRO", "2. TESOUR", "3. TESOUR", "2O TESOUR", "3O TESOUR"
+        ), collapse = "|"),
+        DS_CARGO_MEMBRO, ignore.case = TRUE
+      ),
+    1L, 0L
+  )
+]
+
+## Cargo de decisão -----------------------------------------------------------
+dirigente_ano2[, cargo_decisao := fifelse(presidente == 1L | tesoureiro == 1L, 1L, 0L)]
+```
+
+### Banco de dirigentes nacionais
+
+Esta etapa filtra os dois bancos para manter apenas registros com abrangência nacional (cuja UF já foi padronizada para "BR" na etapa de filtragem), que correspondem às direções nacionais dos partidos. Em seguida, aplica o corte temporal a partir de 2015, ano a partir do qual a cobertura dos dados é considerada suficientemente consistente para análise.
+
+```{r dirigentes_nacionais}
+## Restritivo -----------------------------------------------------------------
+banco_dirigentes_nacional <- dirigente_ano[
+  DS_TIPO_ABRANGENCIA == "NACIONAL" & SG_UF == "BR"
+]
+
+cat("Observações (antes do corte):", nrow(banco_dirigentes_nacional), "\n")
+cat("Anos cobertos:", min(banco_dirigentes_nacional$ANO),
+    "a", max(banco_dirigentes_nacional$ANO), "\n")
+print(table(banco_dirigentes_nacional$ANO))
+
+banco_dirigentes_nacional <- banco_dirigentes_nacional[ANO >= 2015]
+
+## Amplo ----------------------------------------------------------------------
+banco_dirigentes_nacional2 <- dirigente_ano2[
+  DS_TIPO_ABRANGENCIA == "NACIONAL" & SG_UF == "BR"
+]
+
+cat("Observações (antes do corte):", nrow(banco_dirigentes_nacional2), "\n")
+cat("Anos cobertos:", min(banco_dirigentes_nacional2$ANO),
+    "a", max(banco_dirigentes_nacional2$ANO), "\n")
+print(table(banco_dirigentes_nacional2$ANO))
+
+banco_dirigentes_nacional2 <- banco_dirigentes_nacional2[ANO >= 2015]
+```
+
+## Turnover
+
+### Funções auxiliares
+
+Esta etapa define duas funções reutilizáveis de cálculo de turnover, aplicadas a seguir tanto ao banco restritivo quanto ao amplo. A função `calcular_turnover_nomes()` compara, para cada par de anos consecutivos dentro de um grupo (partido × tipo de órgão), os conjuntos de pessoas (identificadas por `id_membro`, o título eleitoral) presentes em `t` e em `t-1`, calculando entradas, saídas, permanências e as proporções correspondentes. A função `calcular_turnover_genero_decisao()` opera apenas sobre os ocupantes de cargos de decisão e, além das métricas de turnover, produz indicadores de transição de gênero: se havia mulher em `t-1` e deixou de haver em `t`, se havia homem e deixou de haver, e se o gênero predominante se manteve entre os dois anos. As funções são vetorizadas: o conjunto de pessoas de `t-1` é deslocado para `t` e cruzado pessoa a pessoa com o de `t`, o que dá o mesmo resultado de comparar os anos um a um, em uma fração do tempo (no nível municipal, de horas para minutos). O turnover também é calculado separadamente para mulheres e para homens (`turnover_prop_mulheres`, `turnover_prop_homens` e, nos cargos de decisão, `turnover_prop_mulheres_decisao` e `turnover_prop_homens_decisao`): entradas mais saídas do grupo sobre o total de pessoas do grupo presentes em algum dos dois anos.
+
+```{r funcoes_turnover}
+# Função 1: turnover geral de nomes -------------------------------------------
+# Compara o conjunto de pessoas de cada grupo em t com o de t-1 (somente anos
+# consecutivos presentes no grupo). Implementação vetorizada: o conjunto de
+# t-1 é deslocado para t e cruzado por pessoa. Inclui o turnover separado de
+# mulheres e de homens.
+calcular_turnover_nomes <- function(dt, by_vars, filtro = NULL) {
+
+  if (!is.null(filtro)) dt <- dt[eval(filtro)]
+
+  k   <- c(by_vars, "ANO")
+  atu <- unique(dt[, c(k, "id_membro", "DS_GENERO"), with = FALSE], by = c(k, "id_membro"))
+  atu[, `:=`(fem = DS_GENERO %in% "FEMININO", masc = DS_GENERO %in% "MASCULINO")]
+  ant <- copy(atu)[, ANO := ANO + 1L]          # pessoas de t-1, rotuladas como t
+
+  atu[, esta_t1 := FALSE][ant, on = c(k, "id_membro"), esta_t1 := TRUE]
+  ant[, esta_t  := FALSE][atu, on = c(k, "id_membro"), esta_t  := TRUE]
+
+  st <- atu[, .(
+    n_membros_t       = .N,
+    n_permanencias    = sum(esta_t1),
+    mulheres_t        = sum(fem),
+    homens_t          = sum(masc),
+    perm_mulheres     = sum(fem  & esta_t1),
+    perm_homens       = sum(masc & esta_t1),
+    entradas_mulheres = sum(fem  & !esta_t1),
+    entradas_homens   = sum(masc & !esta_t1)
+  ), by = k]
+
+  st1 <- ant[, .(
+    n_membros_t1    = .N,
+    mulheres_t1     = sum(fem),
+    homens_t1       = sum(masc),
+    saidas_mulheres = sum(fem  & !esta_t),
+    saidas_homens   = sum(masc & !esta_t)
+  ), by = k]
+
+  res <- merge(st, st1, by = k)                # só anos com t e t-1 presentes
+  res[, `:=`(
+    delta_membros = n_membros_t - n_membros_t1,
+    n_entradas    = n_membros_t  - n_permanencias,
+    n_saidas      = n_membros_t1 - n_permanencias
+  )]
+  res[, `:=`(
+    turnover_abs           = n_entradas + n_saidas,
+    turnover_prop          = (n_entradas + n_saidas) /
+      pmax(n_membros_t + n_membros_t1 - n_permanencias, 1L),
+    turnover_prop_mulheres = (entradas_mulheres + saidas_mulheres) /
+      pmax(mulheres_t + mulheres_t1 - perm_mulheres, 1L),
+    turnover_prop_homens   = (entradas_homens + saidas_homens) /
+      pmax(homens_t + homens_t1 - perm_homens, 1L)
+  )]
+  res[, c("mulheres_t", "homens_t", "mulheres_t1", "homens_t1",
+          "perm_mulheres", "perm_homens") := NULL]
+  setcolorder(res, c(k, "n_membros_t", "n_membros_t1", "delta_membros",
+                     "n_entradas", "n_saidas", "n_permanencias",
+                     "turnover_abs", "turnover_prop",
+                     "entradas_mulheres", "saidas_mulheres", "turnover_prop_mulheres",
+                     "entradas_homens", "saidas_homens", "turnover_prop_homens"))
+  res[]
+}
+
+# Função 2: turnover de gênero nos cargos de decisão --------------------------
+calcular_turnover_genero_decisao <- function(dt, by_vars) {
+
+  k   <- c(by_vars, "ANO")
+  atu <- unique(
+    dt[cargo_decisao == 1L, c(k, "id_membro", "DS_GENERO"), with = FALSE],
+    by = c(k, "id_membro")
+  )
+  atu[, `:=`(fem = DS_GENERO %in% "FEMININO", masc = DS_GENERO %in% "MASCULINO")]
+  ant <- copy(atu)[, ANO := ANO + 1L]          # ocupantes de t-1, rotulados como t
+
+  atu[, esta_t1 := FALSE][ant, on = c(k, "id_membro"), esta_t1 := TRUE]
+  ant[, esta_t  := FALSE][atu, on = c(k, "id_membro"), esta_t  := TRUE]
+
+  st <- atu[, .(
+    n_decisao_t             = .N,
+    perm                    = sum(esta_t1),
+    mulheres_t              = sum(fem),
+    homens_t                = sum(masc),
+    perm_mulheres           = sum(fem  & esta_t1),
+    perm_homens             = sum(masc & esta_t1),
+    entradas_mulher_decisao = sum(fem  & !esta_t1),
+    entradas_homem_decisao  = sum(masc & !esta_t1),
+    tem_mulher_t            = any(fem),
+    tem_homem_t             = any(masc)
+  ), by = k]
+
+  st1 <- ant[, .(
+    n_decisao_t1          = .N,
+    mulheres_t1           = sum(fem),
+    homens_t1             = sum(masc),
+    saidas_mulher_decisao = sum(fem  & !esta_t),
+    saidas_homem_decisao  = sum(masc & !esta_t),
+    tinha_mulher_t1       = any(fem),
+    tinha_homem_t1        = any(masc)
+  ), by = k]
+
+  res <- merge(st, st1, by = k)                # só anos com t e t-1 presentes
+  res[, `:=`(
+    delta_decisao          = n_decisao_t - n_decisao_t1,
+    n_entradas_decisao     = n_decisao_t  - perm,
+    n_saidas_decisao       = n_decisao_t1 - perm,
+    perdeu_mulher_decisao  = fifelse(tinha_mulher_t1 & !tem_mulher_t, 1L, 0L),
+    perdeu_homem_decisao   = fifelse(tinha_homem_t1  & !tem_homem_t,  1L, 0L),
+    manteve_mulher_decisao = fifelse(tinha_mulher_t1 & tem_mulher_t,  1L, 0L),
+    manteve_homem_decisao  = fifelse(tinha_homem_t1  & tem_homem_t,   1L, 0L)
+  )]
+  res[, `:=`(
+    turnover_abs_decisao           = n_entradas_decisao + n_saidas_decisao,
+    turnover_prop_decisao          = (n_entradas_decisao + n_saidas_decisao) /
+      pmax(n_decisao_t + n_decisao_t1 - perm, 1L),
+    turnover_prop_mulheres_decisao = (entradas_mulher_decisao + saidas_mulher_decisao) /
+      pmax(mulheres_t + mulheres_t1 - perm_mulheres, 1L),
+    turnover_prop_homens_decisao   = (entradas_homem_decisao + saidas_homem_decisao) /
+      pmax(homens_t + homens_t1 - perm_homens, 1L)
+  )]
+  res[, c("perm", "tem_mulher_t", "tem_homem_t", "tinha_mulher_t1", "tinha_homem_t1",
+          "mulheres_t", "homens_t", "mulheres_t1", "homens_t1",
+          "perm_mulheres", "perm_homens") := NULL]
+  setcolorder(res, c(k, "n_decisao_t", "n_decisao_t1", "delta_decisao",
+                     "n_entradas_decisao", "n_saidas_decisao",
+                     "turnover_abs_decisao", "turnover_prop_decisao",
+                     "entradas_mulher_decisao", "entradas_homem_decisao",
+                     "saidas_mulher_decisao", "saidas_homem_decisao",
+                     "turnover_prop_mulheres_decisao", "turnover_prop_homens_decisao",
+                     "perdeu_mulher_decisao", "perdeu_homem_decisao",
+                     "manteve_mulher_decisao", "manteve_homem_decisao"))
+  res[]
+}
+```
+
+### Turnover — banco restritivo
+
+Esta etapa aplica as duas funções ao banco restritivo (`banco_dirigentes_nacional`), calculando o turnover de nomes (membros em geral) e o turnover de nomes e gênero nos cargos de decisão, agrupados por partido e tipo de órgão partidário. Os dois resultados são combinados em um único objeto `turnover_restritivo`, que será incorporado ao banco de diretórios na etapa seguinte.
+
+```{r turnover_restritivo}
+by_vars <- c("SG_PARTIDO", "NR_PARTIDO", "NM_TIPO_ORGAO_PARTIDARIO")
+
+tv_nomes_r   <- calcular_turnover_nomes(banco_dirigentes_nacional, by_vars)
+tv_decisao_r <- calcular_turnover_genero_decisao(banco_dirigentes_nacional, by_vars)
+
+turnover_restritivo <- merge(
+  tv_nomes_r,
+  tv_decisao_r,
+  by = c(by_vars, "ANO"),
+  all = TRUE
+)
+
+cat("Turnover restritivo — linhas:", nrow(turnover_restritivo), "\n")
+```
+
+### Turnover — banco amplo
+
+Esta etapa replica o mesmo procedimento para o banco amplo (`banco_dirigentes_nacional2`). Como o critério de inclusão é mais permissivo, espera-se um turnover maior, já que dirigentes com mandatos muito curtos — que não atingiriam os 183 dias do critério restritivo — são incluídos, aumentando a rotatividade observada entre anos consecutivos.
+
+```{r turnover_amplo}
+tv_nomes_a   <- calcular_turnover_nomes(banco_dirigentes_nacional2, by_vars)
+tv_decisao_a <- calcular_turnover_genero_decisao(banco_dirigentes_nacional2, by_vars)
+
+turnover_amplo <- merge(
+  tv_nomes_a,
+  tv_decisao_a,
+  by = c(by_vars, "ANO"),
+  all = TRUE
+)
+
+cat("Turnover amplo — linhas:", nrow(turnover_amplo), "\n")
+```
+
+## Diretórios
+
+### Banco de diretórios — restritivo
+
+O banco `banco_diretorios_nacional` tem como unidade de análise o **ano-partido-tipo de órgão**. Cada linha agrega os dirigentes vigentes (≥ 183 dias) de um partido em determinado tipo de órgão e ano, com indicadores de composição por gênero, presença de setorial de mulheres e cargos de decisão. Na sequência, as variáveis de turnover calculadas anteriormente são incorporadas via `merge`, de modo que cada diretório-ano contenha tanto os indicadores de composição quanto os de renovação em relação ao ano anterior.
+
+As contagens (membros, mulheres, presidentes, tesoureiros, cargos de decisão) referem-se a **pessoas distintas** (`id_membro`), e não a linhas: quem ocupa dois cargos no mesmo órgão, ou aparece em dois órgãos do mesmo tipo no ano, é contado uma vez. `total_genero_ni` conta membros sem gênero informado (#NULO ou NAO INFORMADO), que entram no denominador de `proporcao_mulheres`. `n_orgaos` indica quantos órgãos distintos (`SQ_ORGAO_PARTIDARIO`) do mesmo tipo estiveram vigentes no ano (normalmente 1; 2 em anos de renovação da direção). `dias_atividade_ano` é o maior número de dias ativos de um membro do diretório no ano; mede por quanto tempo aquele tipo de órgão esteve em funcionamento no ano e é usado no código 4 para escolher um único diretório por unidade-ano.
+
+```{r diretorios_restritivo}
+banco_diretorios_nacional <- banco_dirigentes_nacional[,
+  .(
+    total_membros         = uniqueN(id_membro),
+    total_mulheres        = uniqueN(id_membro[DS_GENERO == "FEMININO"]),
+    total_genero_ni       = uniqueN(id_membro[!DS_GENERO %in% c("FEMININO", "MASCULINO")]),
+    total_setorial_mulher = uniqueN(id_membro[setorial_mulher == 1L]),
+    total_presidente      = uniqueN(id_membro[presidente == 1L]),
+    mulher_presidente     = uniqueN(id_membro[presidente == 1L & DS_GENERO == "FEMININO"]),
+    total_tesoureiro      = uniqueN(id_membro[tesoureiro == 1L]),
+    mulher_tesoureiro     = uniqueN(id_membro[tesoureiro == 1L & DS_GENERO == "FEMININO"]),
+    total_decisao         = uniqueN(id_membro[cargo_decisao == 1L]),
+    mulher_decisao        = uniqueN(id_membro[cargo_decisao == 1L & DS_GENERO == "FEMININO"]),
+    n_orgaos              = uniqueN(SQ_ORGAO_PARTIDARIO),
+    dias_atividade_ano    = max(dias_ativos)
+  ),
+  by = .(ANO, SG_PARTIDO, NR_PARTIDO, SG_UF, NM_TIPO_ORGAO_PARTIDARIO)
+][,
+  `:=`(
+    setorial                   = fifelse(total_setorial_mulher > 0, 1L, 0L),
+    proporcao_mulheres         = total_mulheres / total_membros,
+    proporcao_mulheres_decisao = fifelse(
+      total_decisao > 0, mulher_decisao / total_decisao, NA_real_
+    ),
+    tem_mulher_presidente      = fifelse(mulher_presidente > 0, 1L, 0L),
+    tem_mulher_tesoureiro      = fifelse(mulher_tesoureiro > 0, 1L, 0L),
+    tem_mulher_decisao         = fifelse(mulher_decisao    > 0, 1L, 0L)
+  )
+]
+
+# Incorporar turnover ---------------------------------------------------------
+banco_diretorios_nacional <- merge(
+  banco_diretorios_nacional,
+  turnover_restritivo,
+  by = c(by_vars, "ANO"),
+  all.x = TRUE
+)
+
+cat("Observações:", nrow(banco_diretorios_nacional), "\n")
+```
+
+### Banco de diretórios — amplo
+
+O banco `banco_diretorios_nacional2` replica a mesma estrutura do banco restritivo, mas agrega todos os dirigentes que exerceram o cargo em qualquer momento do ano. As variáveis de turnover incorporadas aqui refletem o critério amplo e são, portanto, mais sensíveis a movimentações curtas de pessoal, sendo mais adequadas para análises de rotatividade e instabilidade da composição das direções partidárias.
+
+```{r diretorios_amplo}
+banco_diretorios_nacional2 <- banco_dirigentes_nacional2[,
+  .(
+    total_membros         = uniqueN(id_membro),
+    total_mulheres        = uniqueN(id_membro[DS_GENERO == "FEMININO"]),
+    total_genero_ni       = uniqueN(id_membro[!DS_GENERO %in% c("FEMININO", "MASCULINO")]),
+    total_setorial_mulher = uniqueN(id_membro[setorial_mulher == 1L]),
+    total_presidente      = uniqueN(id_membro[presidente == 1L]),
+    mulher_presidente     = uniqueN(id_membro[presidente == 1L & DS_GENERO == "FEMININO"]),
+    total_tesoureiro      = uniqueN(id_membro[tesoureiro == 1L]),
+    mulher_tesoureiro     = uniqueN(id_membro[tesoureiro == 1L & DS_GENERO == "FEMININO"]),
+    total_decisao         = uniqueN(id_membro[cargo_decisao == 1L]),
+    mulher_decisao        = uniqueN(id_membro[cargo_decisao == 1L & DS_GENERO == "FEMININO"]),
+    n_orgaos              = uniqueN(SQ_ORGAO_PARTIDARIO),
+    dias_atividade_ano    = max(dias_ativos)
+  ),
+  by = .(ANO, SG_PARTIDO, NR_PARTIDO, SG_UF, NM_TIPO_ORGAO_PARTIDARIO)
+][,
+  `:=`(
+    setorial                   = fifelse(total_setorial_mulher > 0, 1L, 0L),
+    proporcao_mulheres         = total_mulheres / total_membros,
+    proporcao_mulheres_decisao = fifelse(
+      total_decisao > 0, mulher_decisao / total_decisao, NA_real_
+    ),
+    tem_mulher_presidente      = fifelse(mulher_presidente > 0, 1L, 0L),
+    tem_mulher_tesoureiro      = fifelse(mulher_tesoureiro > 0, 1L, 0L),
+    tem_mulher_decisao         = fifelse(mulher_decisao    > 0, 1L, 0L)
+  )
+]
+
+# Incorporar turnover ---------------------------------------------------------
+banco_diretorios_nacional2 <- merge(
+  banco_diretorios_nacional2,
+  turnover_amplo,
+  by = c(by_vars, "ANO"),
+  all.x = TRUE
+)
+
+cat("Observações:", nrow(banco_diretorios_nacional2), "\n")
+```
+
+## Exportar bancos
+
+Esta etapa salva os quatro bancos finais em formato `.xlsx` na pasta de saída do projeto. Os bancos de dirigentes contêm uma linha por **ano-dirigente-partido-tipo de órgão**, enquanto os bancos de diretórios contêm uma linha por **ano-partido-tipo de órgão**, com os indicadores de composição e turnover já incorporados.
+
+```{r exportar}
+pasta_saida <- pasta$prod_dirigentes
+
+# Dirigentes
+write.xlsx(
+  banco_dirigentes_nacional,
+  file.path(pasta_saida, "banco_dirigentes_nacional.xlsx"),
+  overwrite = TRUE
+)
+
+write.xlsx(
+  banco_dirigentes_nacional2,
+  file.path(pasta_saida, "banco_dirigentes_nacional2.xlsx"),
+  overwrite = TRUE
+)
+
+# Diretórios
+write.xlsx(
+  banco_diretorios_nacional,
+  file.path(pasta_saida, "banco_diretorios_nacional.xlsx"),
+  overwrite = TRUE
+)
+
+write.xlsx(
+  banco_diretorios_nacional2,
+  file.path(pasta_saida, "banco_diretorios_nacional2.xlsx"),
+  overwrite = TRUE
+)
+
+cat("Bancos salvos em:", pasta_saida, "\n")
+```

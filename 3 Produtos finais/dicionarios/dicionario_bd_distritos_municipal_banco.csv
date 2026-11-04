@@ -1,0 +1,10 @@
+campo;valor
+banco;bd_distritos_municipal
+arquivo;3 Produtos finais/bancos/bd_distritos_municipal.xlsx
+unidade de análise;ano-município (eleições municipais)
+linhas;22.271
+anos;2012, 2016, 2020, 2024
+variáveis;93
+código que produz;3 Produtos finais/16 Produtos finais
+documentação;0 Funções, estrutura e passo-a-passo/0 Estrutura de Montagem do Banco de Dados.Rmd
+gerado em;30/09/2026

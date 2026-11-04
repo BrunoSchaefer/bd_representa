@@ -1,0 +1,335 @@
+---
+title: "bd_representa: conjunto de bancos de dados sobre partidos e eleições no Brasil"
+subtitle: "0 — Estrutura e passo-a-passo"
+author: "Bruno Schaefer (IESP-UERJ)"
+date: "2026-09-30"
+output:
+  pdf_document:
+    toc: true
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Objetivo
+
+Construir um conjunto de bancos de dados de fácil acesso e visualização sobre partidos políticos e eleições no Brasil. Os bancos ligam a composição das direções partidárias (quem são os dirigentes, quantas mulheres, quem ocupa a presidência e a tesouraria, quanto a direção se renova) aos recursos que os partidos recebem e gastam, às características ideológicas e organizacionais dos partidos, às candidaturas, às listas partidárias e aos resultados eleitorais, e às características dos distritos.
+
+Este documento é o passo-a-passo para reproduzir os bancos: onde estão os dados, em que ordem rodar os códigos, o que cada código faz e quais decisões foram tomadas. Cada banco final tem um dicionário (Seção 7.6).
+
+**Fluxo geral**
+
+```
+Etapa 1 — Pesquisas individuais          Etapa 2 — Agregação              Etapa 3 — Produtos finais
+(1 Pesquisas individuais)                (2 Agregação dos dados)          (3 Produtos finais)
+
+1a Partidos: dirigentes, diretórios,  ─┐
+   financiamento partidário,           ├─> 1b Partidos: diretórios   ─┐
+   ideologia e organização             │   + financiamento + partido  │   14 bd_dirigentes_*, bd_diretorios_*
+2a Eleições: candidatos, receitas,     │   + distrito (4, 5_1, 13)    ├─> 15 bd_candidatos_*
+   bens, resultados, vagas e           ├─> 2b Eleições: candidaturas ─┤   16 bd_distritos_*
+   eleitorado                          │   por cargo (12)             │   17 bd_partidos_* (listas)
+3a Socioeconômico (IBGE)             ─┘                               └─> 18 dicionários
+5a Validação (amostras × TSE)
+```
+
+# Passo-a-passo para reproduzir
+
+## Passo 0 — Preparar o ambiente
+
+1. **Requisitos.** R 4.5 ou superior; pacotes `here`, `tidyverse`, `data.table`, `stringi`, `openxlsx`, `lubridate`, `knitr`, `deflateBR` (requer internet, para o IPCA) e `basedosdados`. Para os códigos 6 a 11, uma conta no Google Cloud com projeto de cobrança (nos códigos: `set_billing_id("seu-projeto") ## substituir por seu projeto`). Recomenda-se 16 GB de memória RAM.
+2. **Abrir o projeto.** Abrir `Dirigentes Partidários.Rproj`, na raiz da pasta. Todos os caminhos são relativos à raiz (pacote `here`) e estão definidos em um único arquivo, `0 Funções, estrutura e passo-a-passo/0_pastas.R`. Para mudar a estrutura de pastas, basta alterar esse arquivo. As funções comuns estão em `0_funcoes_auxiliares.R` (lidas por todos os códigos).
+3. **Dados brutos.** Os arquivos baixados do TSE e da literatura ficam na subpasta `dados_brutos` de cada pesquisa (Tabela 1). Os dados da basedosdados são baixados pelos próprios códigos.
+
+## Passos 1 a 3 — Rodar os códigos
+
+Abrir `0 Funções, estrutura e passo-a-passo/0_rodar_etapas.R`, escolher as etapas em `rodar` (coluna "Etapa no executor" da Tabela 2) e executar. Cada código roda em um processo R separado, na ordem da tabela, e o executor para no primeiro erro. O relatório de cada código (`.md`, com saídas e diagnósticos) e o registro geral (`execucao.log`) ficam em `0 Funções, estrutura e passo-a-passo/registros de execução`. Também é possível abrir e rodar cada código individualmente, na mesma ordem.
+
+```r
+rodar <- c("1a", "1a_financ", "1a_partidos", "2a", "5a", "3a", "1b", "2b", "3")  # tudo
+rodar <- c("1b", "2b", "3")                                                      # só Etapas 2 e 3
+source("0 Funções, estrutura e passo-a-passo/0_rodar_etapas.R")
+```
+
+**Tabela 2 — Ordem dos códigos**
+
+| Passo | Etapa no executor | Código | Conteúdo | Saída | Tempo |
+|---|---|---|---|---|---|
+| 1 | `1a` | 1_1, 1_2, 1_3 | Dirigentes e diretórios (nacional, estadual, municipal) | `4a Produtos/Dirigentes e diretórios` | 40 min |
+| 1 | `1a_financ` | 2_1 a 2_3; 3_1 a 3_3 | Despesas e receitas partidárias | `4a Produtos/Financiamento partidário` | 2 h |
+| 1 | `1a_partidos` | 5 | Ideologia, democracia interna e PSI (partido-ano) | `4a Produtos/Partidos` | 1 min |
+| 1 | `2a` | 6_1 a 10_2 | Financiamento eleitoral, características, bens, resultados e incumbência dos candidatos; vagas, comparecimento e eleitorado | `4a Produtos/Candidatos` e `Distritos` | 1 h |
+| 1 | `5a` | 6_1 a 10_2 validação | Conferência por amostragem com os arquivos do TSE | relatórios | 10 min |
+| 1 | `3a` | 11 | Socioeconômico (população, sexo e cor/raça, PIB) | `4a Produtos/Socioeconômico` | 1 min |
+| 2 | `1b` | 4, 5_1, 13 | Diretórios + financiamento partidário + partido + distrito | `2 Agregação dos dados/1b Partidos/bancos` | 11 min |
+| 2 | `2b` | 12 | Candidaturas por cargo + resultados, bens, financiamento, partido e distrito | `2 Agregação dos dados/2b Eleições/bancos` | 8 min |
+| 3 | `3` | 14 | `bd_dirigentes_*` e `bd_diretorios_*` | `3 Produtos finais/bancos` | 40 min |
+| 3 | `3` | 15 | `bd_candidatos_*` | `3 Produtos finais/bancos` | 8 min |
+| 3 | `3` | 16 | `bd_distritos_*` | `3 Produtos finais/bancos` | 5 min |
+| 3 | `3` | 17 | `bd_partidos_*` (listas partidárias) | `3 Produtos finais/bancos` | 6 min |
+| 3 | `3` | 18 | Dicionários de todos os bancos finais | `3 Produtos finais/dicionarios` | 10 min |
+
+Tempos aproximados em um computador com 16 GB. Os códigos de 6 a 11 dependem do BigQuery. O código 1_3 (dirigentes municipais) é o mais pesado: rode-o sem outros programas abertos.
+
+## Onde estão os produtos
+
+- **Bancos finais:** `3 Produtos finais/bancos` (Seção 7).
+- **Dicionários:** `3 Produtos finais/dicionarios` (um por banco, mais `0_indice_dicionarios.xlsx`).
+- **Bancos intermediários:** `1 Pesquisas individuais/4a Produtos` (Etapa 1) e `2 Agregação dos dados/*/bancos` (Etapa 2).
+
+# Estrutura de pastas
+
+```
+Dirigentes Partidários.Rproj
+LEIA-ME.txt
+0 Funções, estrutura e passo-a-passo/
+    0 Estrutura de Montagem do Banco de Dados.Rmd   (este documento)
+    0_pastas.R               caminhos de todas as pastas
+    0_funcoes_auxiliares.R   funções comuns (leitura do TSE, siglas, validação, DRI)
+    0_rodar_etapas.R         executor do passo-a-passo
+    bd_representa Conjunto de bancos.txt   diretrizes do projeto
+    registros de execução/
+1 Pesquisas individuais/          Etapa 1
+    1a Partidos/
+        Dirigentes e diretórios/                              1_1, 1_2, 1_3 + dados_brutos
+        Financiamento partidário/                             2_1 a 2_3, 3_1 a 3_3 + dados_brutos
+        Ideologia, democracia interna e institucionalização/  5 + dados_brutos
+    2a Eleições/
+        Financiamento eleitoral/               6_1, 6_2 + dados_brutos
+        Características dos candidatos/        7_1, 7_2 + dados_brutos
+        Bens/                                  8_1, 8_2 + dados_brutos
+        Resultados eleitorais/                 9_1, 9_2 + dados_brutos
+        Vagas, comparecimento e eleitorado/    10_1, 10_2 + dados_brutos
+    3a Socioeconômico/                          11
+    4a Produtos/    bancos da Etapa 1: Dirigentes e diretórios, Financiamento partidário,
+                    Partidos, Candidatos, Distritos, Socioeconômico
+    5a Validação/   validações por amostragem dos códigos 6 a 10
+2 Agregação dos dados/            Etapa 2
+    1b Partidos/    4, 5_1, 13 + bancos
+    2b Eleições/    12 + bancos
+3 Produtos finais/                Etapa 3
+    14, 15, 16, 17, 18
+    bancos/         bancos finais
+    dicionarios/    dicionário de cada banco final
+_arquivo/          versões antigas (não usadas pelos códigos)
+```
+
+**Tabela 1 — Fontes e dados brutos (Etapa 1)**
+
+| Pesquisa | Fonte | Coleta |
+|---|---|---|
+| Dirigentes e diretórios | TSE, Portal de Dados Abertos, "Órgãos partidários" (`orgao_partidario_<SIGLA>.csv`, 39 partidos) | direta, 29/11/2025 |
+| Financiamento partidário | TSE, "Prestação de contas partidárias" (`despesa_anual_<ANO>_BRASIL.csv`, `receita_anual_<ANO>_BRASIL.csv`, 2017–2025) | direta, 17/01/2026 |
+| Ideologia, democracia interna e institucionalização | Zucco (BLS); Bolognesi, Ribeiro e Codato; Salgado; Ribeiro, Locatelli e Assis | literatura |
+| Candidatos, financiamento eleitoral, bens, resultados, vagas, comparecimento e eleitorado | basedosdados, `br_tse_eleicoes` (tabelas `candidatos`, `receitas_candidato`, `despesas_candidato`, `bens_candidato`, `resultados_candidato`, `vagas`, `detalhes_votacao_municipio`, `perfil_eleitorado_municipio_zona`) | indireta; os arquivos do TSE nas pastas `dados_brutos` servem à validação |
+| Socioeconômico | basedosdados, IBGE: Censos 2010 e 2022 (`br_ibge_censo_2022.populacao_grupo_idade_sexo_raca`), estimativas populacionais (`br_ibge_populacao.municipio`) e PIB municipal (`br_ibge_pib.municipio`) | indireta |
+
+# Convenções comuns
+
+- **Níveis e distritos.** Nacional: direções nacionais. Estadual: direções estaduais e a regional do DF; distrito = UF. Municipal: direções municipais e as zonais do DF; distrito = município. Como o DF não tem municípios, cada zona eleitoral do DF é tratada como um município nos bancos de direções (com o número da zona no lugar do código do município).
+- **Períodos.** Direções partidárias: 2015–2025. Financiamento partidário: 2017–2025 (2025 incompleto). Eleições gerais: 2010, 2014, 2018 e 2022. Eleições municipais: 2012, 2016, 2020 e 2024. Características dos partidos: 2010–2025. Socioeconômico: 2010–2025.
+- **Eleições.** Só eleições ordinárias (a eleição de Macapá de 2020, adiada pelo apagão, é mantida) e 1º turno; o desfecho do 2º turno fica em variáveis próprias.
+- **Chaves.** Partidos: sigla atual padronizada (`SG_PARTIDO_PAD`, função `sigla_atual()`: sem acentos, PMDB = MDB, PR = PL, PRB = REPUBLICANOS etc.). Municípios: código TSE (`CD_MUNICIPIO`, `id_municipio_tse`) nos dados do TSE e código IBGE (`id_municipio`) nos dados da basedosdados; a correspondência vem do código 10. Pessoas: título eleitoral.
+- **Valores monetários.** Deflacionados pelo IPCA de dezembro de 2025, com referência em dezembro do ano (`deflateBR`).
+- **Formatos.** `.xlsx` quando o banco cabe no Excel; `.csv` (separador `;`, UTF-8) para os bancos grandes (municipais). A função `ler_banco()` lê os dois formatos mantendo códigos como texto.
+- **Informações de distrito nos bancos de direções.** Vêm das eleições; cada eleição vale para o próprio ano e o seguinte (2014 para 2014 e 2015; 2016 para 2016 e 2017). Variáveis que dependem do cargo levam o nome do cargo: `governador`, `senado`, `camara`, `assembleia`, `prefeitura`, `vereanca`.
+- **Prefixos de variáveis.** `partido_` (características nacionais do partido), `diretorio_` (direção do partido no distrito), `distrito_` (eleitorado, vagas e comparecimento do distrito), `ce_` (Comissão Executiva nacional), `desp_` e `rec_` (despesas e receitas partidárias), `governador_`, `senado_`, `presidente_`, `prefeitura_` (candidaturas majoritárias do partido, nos bancos de listas).
+
+# Etapa 1 — Pesquisas individuais (Passo 1)
+
+## Dirigentes e diretórios (códigos 1_1, 1_2, 1_3)
+
+**Unidade de análise:** ano-dirigente-partido-tipo de órgão (mais UF no estadual e município no municipal) e ano-partido-tipo de órgão (diretórios).
+
+1. **Leitura.** Todos os arquivos são lidos como texto (Latin-1) e empilhados. Cerca de 208 mil linhas exatamente repetidas (4% do total) são removidas.
+2. **Abrangência.** `NACIONAL`; `ESTADUAL` e `REGIONAL (DF)`; `MUNICIPAL` e `ZONAL (DF)`. A partir de 2022 várias direções nacionais foram registradas com a UF da sede (DF ou SP): no banco nacional a UF é padronizada para "BR" e a original fica em `SG_UF_REGISTRO`.
+3. **Acentos.** Removidos de todas as colunas de texto (siglas como `UNIAO`, `MISSAO`; órgãos como `ORGAO DEFINITIVO`).
+4. **Pessoa.** Identificada pelo título eleitoral (`id_membro`); sem título, pelo sequencial do membro no TSE.
+5. **Datas.** Sem data de fim: em exercício até 31/12/2025. Sem data de início ou anterior a 1980 (erros como 30/12/1899): descartado.
+6. **Expansão por ano.** Dias ativos em cada ano = interseção do mandato com o ano civil. **Restritivo:** pelo menos 183 dias no ano (quem comandava o partido). **Amplo:** qualquer dia no ano (rotatividade).
+7. **Versões repetidas do mesmo vínculo** (mesmo órgão, pessoa e cargo, diferindo só na data de fim): uma linha por ano-órgão-pessoa-cargo, a de maior permanência.
+8. **Cargos.** `setorial_mulher` ("MULH"); `presidente` ("PRESIDENT"/"PRESIDENC", excluindo vices, honorários, conselhos, fundações, juventude, setoriais, interinos, licenciados e, no nacional, presidentes estaduais com assento no diretório nacional); `tesoureiro` ("TESOUR", excluindo adjuntos, suplentes, vices, vogais, licenciados e segundos e terceiros tesoureiros); `cargo_decisao` (presidente ou tesoureiro).
+9. **Diretórios.** Contagens por pessoa distinta: `total_membros`, `total_mulheres`, `total_genero_ni`, `proporcao_mulheres`, `setorial`, presidentes, tesoureiros e cargos de decisão por gênero, `n_orgaos` e `dias_atividade_ano` (maior número de dias de exercício de um membro no ano: por quanto tempo o órgão funcionou).
+10. **Turnover** (anos consecutivos, por partido, tipo de órgão e distrito): entradas, saídas, permanências, turnover absoluto e proporcional (entradas + saídas sobre as pessoas presentes em algum dos dois anos); turnover de mulheres e de homens; o mesmo para os cargos de decisão, com entradas e saídas por gênero e perda ou manutenção de mulheres e homens. Vazio em 2015.
+
+**Produtos (4a):** `banco_dirigentes_nacional(2).xlsx`, `banco_dirigentes_estadual(2).xlsx`, `banco_dirigentes_mun.csv` e `banco_dirigentes_mun2.csv`; `banco_diretorios_{nacional, estadual, municipal}(2).xlsx`. Sem sufixo: restritivo; sufixo 2: amplo.
+
+## Financiamento partidário (códigos 2_1 a 2_3 e 3_1 a 3_3)
+
+**Unidade de análise:** ano-partido (nacional), ano-partido-UF (estadual), ano-partido-município (municipal).
+
+1. **Leitura.** Os arquivos do TSE têm aspas dentro de campos e quebras de linha dentro de nomes; leitores comuns descartam linhas sem aviso (receitas de 2017: 291.899 de 640.084 linhas lidas pelo `readr`). A função `ler_csv_tse()` remonta os registros e recupera todas as linhas. Ela recusa arquivos regravados no Excel (sem aspas): extrair de novo do `.zip` do TSE.
+2. **Nível** pela esfera do prestador de contas (`Nacional`; `Estadual`/`Distrital`; `Municipal`/`Zonal`). O código de município das contas não é o código TSE dos dirigentes; a correspondência é feita no código 4.
+3. **Despesas.** Soma de `VR_GASTO` (o `VR_DOCUMENTO` se repete e não é somado). Categorização em três níveis: categoria descritiva (plano de contas do TSE); tipologia de Roeder (2019) — pessoal, sedes e política (aparato), comunicação e publicidade (eleições), mais transferências e financeiro-contábil; e dimensão. Finalidade (ordinária, eleitoral, mulheres) e marcador `despesa_mulheres`. Percentuais da tipologia sobre `valor_total_tipologia`; os demais, sobre o total bruto. O total bruto inclui transferências a outras instâncias e candidatos: não somar entre níveis.
+4. **Receitas.** Soma de `VR_RECEITA`, por fonte (FEFC, Fundo Partidário, recursos para campanha, outros), finalidade, origem (cotas, partidos, candidatos, pessoas físicas e jurídicas, não identificada) e dimensão (públicos, intrapartidários, privados).
+
+Referência: Roeder, K. M. "Com que os partidos gastam seus recursos financeiros? Uma proposta de tipologia de gastos partidários." 43º Encontro da Anpocs, 2019.
+
+**Produtos (4a):** `banco_despesas_{nacional, estadual, municipal}.xlsx` e `banco_receitas_{...}.xlsx`.
+
+## Ideologia, democracia interna e institucionalização (código 5)
+
+**Unidade de análise:** partido-ano, 2010–2025, para os 39 partidos do banco de dirigentes.
+
+**Fontes:** BLS — Zucco (2023), Brazilian Legislative Surveys, Harvard Dataverse; Bolognesi, Ribeiro e Codato (2023, *Dados*) e Bolognesi, Ribeiro, Codato e Silva (2025, *Opinião Pública*); Salgado (2020, *Revista de Investigações Constitucionais*); Ribeiro, Locatelli e Assis (2022, *Dados*).
+
+1. **Siglas** da época convertidas para a atual (`sigla_atual()`).
+2. **BLS** (-1 esquerda a 1 direita, `IDEO_IMPUTED`; `bls_ideologia_estimada` guarda só as estimativas próprias): cada ano recebe a onda mais recente até ele (2009 para 2010–2012; 2013 para 2013–2016; 2017; 2018 em diante).
+3. **Bolognesi** (0 a 10): dados de 2022 a partir de 2019; de 2018 até 2018. Categoria só para 2022. Correlação com o BLS: 0,95.
+4. **Democracia interna (Salgado):** índice e componentes, constantes.
+5. **PSI e IPD (Ribeiro et al.):** 17 partidos, 2011–2014; usa-se a média do período, repetida em todos os anos.
+
+**Produto (4a):** `banco_partidos_ano.xlsx`.
+
+## Eleições (códigos 6 a 10)
+
+Dados da basedosdados, só eleições ordinárias (filtro aplicado na consulta ao BigQuery). Todos os bancos de candidatos trazem o sequencial da candidatura no TSE, chave que liga as fontes candidato a candidato. Os bancos municipais dos códigos 6 a 9 são salvos em `.csv`.
+
+- **Financiamento eleitoral (6_1, 6_2).** Por candidato: receitas totais e por origem (pessoas físicas e jurídicas, recursos próprios, partidos, outros candidatos), recursos públicos (FEFC e Fundo Partidário), doações de direções partidárias identificadas pelo nome do doador (nacional, estadual e, nas municipais, municipal ou zonal) e recursos públicos repassados por cada direção; despesas totais e por tipo (tradicional, moderno, organização, outras) e com internet.
+- **Características dos candidatos (7_1, 7_2).** Candidaturas deferidas (inclusive com recurso): partido, número, sequencial, nome, título, CPF, nascimento, idade, gênero, instrução, ocupação, estado civil, naturalidade e cor/raça (desde 2014).
+- **Bens (8_1, 8_2).** Por candidato (ano e sequencial): patrimônio total, número de bens e valor por tipo (imóveis e imóveis rurais, veículos, participações, liquidez, aplicações, créditos, outros). Em 2010 o TSE não informa o tipo do bem.
+- **Resultados (9_1, 9_2).** Por candidato e turno: votos, resultado e `eleito` ("eleito", "eleito por QP" e "eleito por média"). **Incumbência:** `incumbente` = 1 quando a pessoa (título eleitoral) foi eleita para o mesmo cargo, no mesmo distrito (UF ou município; Brasil para presidente), na eleição anterior; no Senado, 4 ou 8 anos antes (mandato em curso). As eleições de 2002, 2006 e 2008 são baixadas só para esse cálculo. NA quando o título falta.
+- **Vagas, comparecimento e eleitorado (10_1, 10_2).** Por ano-distrito-cargo (1º turno): aptos, comparecimento, abstenção, votos válidos, brancos, nulos, de legenda e nominais, percentuais, vagas, eleitores por vaga e perfil do eleitorado (gênero e instrução); nas municipais, indicador de 2º turno.
+
+**Produtos (4a):** `Candidatos/` (`candidaturas_*`, `financiamento_*`, `bens_candidatos_*`, `resultados_*`, gerais em `.xlsx` e municipais em `.csv`) e `Distritos/` (`base_uf.xlsx`, `base_mun.xlsx`/`.rds`).
+
+## Socioeconômico (código 11)
+
+Informações demográficas e socioeconômicas por distrito e ano, 2010–2025: `socioeconomico_municipio.csv` (chaves `ano` + `id_municipio`) e `socioeconomico_uf.csv` (`ano` + `sigla_uf`, soma dos municípios). Os códigos 12, 13, 16 e 17 os incorporam.
+
+- **População:** estimativas anuais do IBGE (`populacao`; nos anos de censo, a contagem).
+- **Sexo e cor/raça:** contagens do Censo (`censo_*`) e proporções na população (`prop_mulheres_populacao`, `prop_pretos_`, `prop_pardos_`, `prop_negros_` (pretos + pardos), `prop_brancos_`, `prop_amarelos_`, `prop_indigenas_populacao`). **Janela dos censos:** Censo 2010 para 2010–2015 e Censo 2022 para 2016–2025 (`ano_censo`). Municípios instalados depois de 2010 ficam sem composição até 2015.
+- **PIB:** PIB, impostos líquidos e valor adicionado por setor, deflacionados pelo IPCA para reais de dezembro de 2025; `pib_per_capita`; `impostos_pib` e `dependencia_{adm, industria, agro, servicos}` (participação do setor no valor adicionado). O PIB municipal vai até 2023 (NA em 2024 e 2025) e seus componentes até 2021 (participações NA em 2022 e 2023).
+- **Validação:** a soma dos municípios reproduz os totais do IBGE (Censo 2010: 190,7 milhões, 50,7% pretos e pardos; Censo 2022: 203,1 milhões, 55,5%).
+
+## Validação (5a)
+
+Cada código de 6 a 10 tem uma validação que compara, para uma amostra, o banco feito com a basedosdados com os arquivos brutos do TSE (funções `ler_zip_tse()`, `texto_bd()` e `comparar_valores()`). Valores deflacionados são comparados em termos nominais (o fator de deflação é estimado pela mediana da razão e confere com o `deflateBR`). Veredito "OK" quando pelo menos 99% dos casos estão dentro da tolerância (1% para valores; igualdade exata para votos, vagas e número de bens) e o total difere menos que a tolerância.
+
+| Validação | Amostra | Comparação | Resultado |
+|---|---|---|---|
+| 6_1 | 2022, RJ | receitas, recursos públicos, despesas contratadas | receitas 99,6%; públicos 99,8%; despesas 98,6% (total −0,17%) |
+| 6_2 | 2020, TO | idem | OK (≥ 99,95%) |
+| 7_1 | 2018, Brasil | existência, contagem, gênero, raça, nascimento, título | OK (100% encontradas; ≥ 99,7%) |
+| 7_2 | 2020, TO | idem | OK |
+| 8_1 | 2018, Brasil | número de bens, patrimônio, imóveis | OK (100%) |
+| 8_2 | 2020, TO | idem | OK (100%) |
+| 9_1 | 2018, AC | votos e eleitos | OK (100%) |
+| 9_2 | 2016, AC | idem | OK (100%) |
+| 10_1 | 2018 | vagas; votos do AC | OK (100%) |
+| 10_2 | 2016 | vagas; votos do AC | OK (100%) |
+
+# Etapa 2 — Agregação dos dados (Passo 2)
+
+## Partidos (códigos 4, 5_1 e 13)
+
+1. **Código 4 — diretórios e financiamento partidário.** Uma linha por unidade partidária-ano. Diretórios nacionais e estaduais no critério restritivo; municipais no amplo (as direções municipais são curtas e trocam com frequência). Quando mais de um tipo de órgão esteve vigente na unidade-ano, fica o de maior tempo de atividade (`dias_atividade_ano`; empate: mais membros, depois definitivo > provisório > interventora); `n_tipos_orgao_ano` e `tipos_orgao_ano` registram os tipos. No nacional, Comissão Executiva e órgão de direção ficam em bancos separados (no TSE, a Comissão Executiva só existe no nível nacional). Siglas harmonizadas (`PC do B` = `PCDOB`, `SDD` = `SOLIDARIEDADE`, `O DEMOCRATA` = `PMB`; o PRD tem direção própria). Municípios das contas ligados ao código TSE dos dirigentes pelo nome dentro da UF (20 grafias corrigidas por tabela). Variáveis de despesa com prefixo `desp_` e de receita com `rec_`.
+2. **Código 5_1 — características nacionais do partido.** Ideologia, democracia interna e PSI por partido-ano, iguais para todas as direções do partido no ano.
+3. **Código 13 — distrito.** Vagas, comparecimento e perfil do eleitorado (código 10) e socioeconômico (código 11), pela regra da eleição de referência (própria eleição ou do ano anterior; variável `distrito_ano_eleicao`). Brasil = soma das UFs. Também exporta as tabelas de distrito por ano e por eleição.
+
+**Bancos:** `banco_*` (4), `banco_partidos_*` (5_1), `diretorios_*` (13), `distritos_{brasil, uf, municipio}_{ano, eleicao}`.
+
+## Eleições (código 12)
+
+Um banco por cargo (`candidaturas_<cargo>`), uma linha por candidatura deferida em eleição ordinária, com:
+
+- características, votos e resultado do 1º turno (`votos_1turno`, `resultado_1turno`, `eleito_1turno`), desfecho do 2º turno (`disputou_2turno`, `votos_2turno`, `eleito_final`; quando o resultado falta, o mais votado) e `incumbente`;
+- bens (por ano e sequencial) e financiamento eleitoral (`tem_declaracao_bens`, `tem_financiamento`);
+- **participação nos votos:** `pct_votos_distrito` (votos sobre os votos válidos do cargo-distrito; presidente: sobre os votos nominais) e `pct_votos_partido` (votos sobre a soma dos votos nominais dos candidatos do mesmo partido no cargo-distrito; os votos de legenda não entram — Seção 8);
+- **partido:** características nacionais (prefixo `partido_`) e direção do partido no distrito (prefixo `diretorio_`: estadual para os cargos estaduais e federais, nacional para presidente, municipal nas municipais; a partir das eleições de 2016/2018);
+- **distrito:** vagas, comparecimento e eleitorado do mesmo cargo e eleição (prefixo `distrito_`) e socioeconômico do distrito no ano da eleição (código 11).
+
+# Etapa 3 — Produtos finais (Passo 3)
+
+Bancos em `3 Produtos finais/bancos`; dicionários em `3 Produtos finais/dicionarios`.
+
+| Banco | Unidade | Anos | Linhas | Formato | Código |
+|---|---|---|---|---|---|
+| `bd_dirigentes_nacional` | ano-dirigente-cargo | 2015–2025 | ~40 mil | `.xlsx` | 14 |
+| `bd_dirigentes_estadual` | ano-dirigente-cargo-UF | 2015–2025 | ~220 mil | `.xlsx` | 14 |
+| `bd_dirigentes_municipal/` | ano-dirigente-cargo-município | 2015–2025 | ~8,5 milhões (um arquivo por ano) | `.csv` | 14 |
+| `bd_diretorios_nacional` | ano-partido | 2015–2025 | 336 | `.xlsx` | 14 |
+| `bd_diretorios_estadual` | ano-partido-UF | 2015–2025 | 7.277 | `.xlsx` | 14 |
+| `bd_diretorios_municipal` | ano-partido-município | 2015–2025 | ~720 mil | `.csv` | 14 |
+| `bd_candidatos_governadoria` | candidatura | 2010–2022 (gerais) | 697 | `.xlsx` | 15 |
+| `bd_candidatos_senado` | candidatura | 2010–2022 (gerais) | 894 | `.xlsx` | 15 |
+| `bd_candidatos_camara` | candidatura | 2010–2022 (gerais) | 27.841 | `.xlsx` | 15 |
+| `bd_candidatos_assembleia` | candidatura | 2010–2022 (gerais) | 60.607 | `.xlsx` | 15 |
+| `bd_candidatos_prefeitura` | candidatura | 2012–2024 (municipais) | 63.124 | `.xlsx` | 15 |
+| `bd_candidatos_vereanca` | candidatura | 2012–2024 (municipais) | 1,75 milhão | `.csv` | 15 |
+| `bd_partidos_camara` | ano-partido-UF (deputado federal) | 2010–2022 (gerais) | 2.933 | `.xlsx` | 17 |
+| `bd_partidos_assembleias` | ano-partido-UF (deputado estadual e distrital) | 2010–2022 (gerais) | 2.958 | `.xlsx` | 17 |
+| `bd_partidos_vereanca` | ano-partido-município (vereador) | 2012–2024 (municipais) | ~228 mil | `.csv` | 17 |
+| `bd_distritos_estadual` | ano-UF | 2010–2022 (gerais) | 108 | `.xlsx` | 16 |
+| `bd_distritos_municipal` | ano-município | 2012–2024 (municipais) | ~22 mil | `.xlsx` | 16 |
+
+## Direções partidárias: dirigentes e diretórios (código 14)
+
+**bd_diretorios_nacional, bd_diretorios_estadual, bd_diretorios_municipal.** Unidade: ano-partido-distrito. Tudo o que a Etapa 2 reuniu (composição, turnover geral, por gênero e dos cargos de decisão, financiamento partidário, características nacionais do partido e do distrito) e o cruzamento com as eleições: `n_dirigentes_ja_candidatos`, `n_dirigentes_ja_eleitos`, `n_dirigentes_candidatos_no_ano`, `n_mulheres_ja_candidatas`, `n_decisao_ja_candidatos`. No nacional, a Comissão Executiva entra como colunas com prefixo `ce_`.
+
+**bd_dirigentes_nacional, bd_dirigentes_estadual, bd_dirigentes_municipal** (este, um arquivo por ano). Unidade: ano-dirigente-partido-distrito (uma linha por cargo). Dados do dirigente; trajetória no partido e distrito (`presente_ano_anterior`, `mesmo_cargo_ano_anterior`, `mudou_cargo`, `passou_a_decisao`; NA em 2015); candidaturas até o ano (`foi_candidato`, `n_candidaturas`, `ja_eleito`, `candidato_no_ano`, `ultimo_ano_candidatura`, `ultimo_cargo_candidatura`, `eleito_ultima_candidatura`); composição do diretório (prefixo `diretorio_`), características nacionais do partido (`partido_`) e do distrito (`distrito_`).
+
+**Cruzamento dirigente-candidato.** Pelo título eleitoral, que existe nas duas fontes (cobertura de praticamente 100% entre os candidatos): é exato e evita falsos positivos de nomes parecidos. Quando o dirigente não tem título, usa-se o nome normalizado, só se ele for único entre os candidatos da UF (`cruzamento_candidatura` = "titulo" ou "nome").
+
+**Versão:** restritiva no nacional e no estadual; ampla no municipal (a mesma dos diretórios). Colunas técnicas e de contato do órgão (endereço, telefones, e-mail) ficam só nos bancos da Etapa 1. No banco nacional de diretórios, quando o partido só tem Comissão Executiva no ano, as informações do partido (financiamento, características, distrito) vêm dela.
+
+## Candidaturas (código 15)
+
+`bd_candidatos_governadoria`, `bd_candidatos_senado`, `bd_candidatos_camara`, `bd_candidatos_assembleia` (deputados estaduais e distritais), `bd_candidatos_prefeitura` e `bd_candidatos_vereanca` (`.csv`). Unidade: ano-candidato-cargo-partido-distrito, com tudo o que a Etapa 2b reuniu, mais `mulher` e `negro` (pretos e pardos; NA quando a cor/raça não foi informada).
+
+## Listas partidárias (código 17)
+
+**bd_partidos_camara, bd_partidos_assembleias, bd_partidos_vereanca.** Unidade: ano-partido-distrito nos cargos proporcionais — a lista de candidaturas deferidas do partido (número do partido na eleição) na UF ou no município. Até 2018 havia coligações proporcionais e, desde 2022, federações: a lista efetiva pode reunir mais de um partido, mas aqui cada partido é uma linha.
+
+- **Composição da lista:** candidaturas, mulheres, pessoas negras, eleitos (por gênero e raça), incumbentes, idade média, ensino superior, `cumpre_cota_genero` (≥ 30% de mulheres entre as candidaturas deferidas), `candidatos_por_vaga`, `pct_candidatos_distrito`, `n_partidos_distrito`.
+- **Dirigentes candidatos:** candidaturas de dirigentes do próprio partido no distrito (diretório estadual; municipal na vereança), dos cargos de decisão, eleitos e, nas eleições gerais, da direção nacional (título eleitoral; NA antes de 2016).
+- **Votos e cadeiras:** votos nominais da lista no 1º turno, `pct_votos_nominais_distrito`, `pct_cadeiras`.
+- **Financiamento e patrimônio:** somas das receitas por origem, despesas e patrimônio dos candidatos da lista.
+- **Participação dos grupos** (`prop_<medida>_mulheres`, `prop_<medida>_negros`) nas candidaturas, votos, receitas, recursos públicos, recursos de partidos, recursos de direções e eleitos, e os **índices de equidade (DRI)** correspondentes (`indice_genero_*`, `indice_racial_*`; Seção 7.5).
+- **Candidaturas majoritárias próprias no mesmo distrito e eleição** (`governador_*`, `senado_*`, `presidente_*`; `prefeitura_*` na vereança): `tem_candidato`, nome de urna, gênero, raça, número de mulheres e pessoas negras, eleitos, incumbência, 2º turno e participação nos votos. Apoio a candidaturas de outros partidos não é identificado.
+- **Diretório do partido no distrito** no ano da eleição (prefixo `diretorio_`): todas as variáveis de `bd_diretorios_estadual` ou `bd_diretorios_municipal` (composição, turnover, financiamento partidário, cruzamento dirigente-candidato), a partir de 2016 (municipal) e 2018 (estadual).
+- **Partido, distrito e socioeconômico:** `partido_*`, `distrito_*` e as variáveis do código 11.
+
+## Distritos (código 16)
+
+**bd_distritos_estadual** (ano-UF, eleições gerais; cargos proporcionais câmara e assembleia) e **bd_distritos_municipal** (ano-município, eleições municipais; vereança).
+
+- **Índices de equidade (DRI)** por cargo proporcional (`indice_genero_*`, `indice_racial_*`; Seção 7.5), sobre as candidaturas, receitas de campanha, receitas vindas de partidos, receitas vindas de direções partidárias e eleitos (`prop_*`).
+- **Partidos no distrito** (ano da eleição, a partir de 2016/2018): número de diretórios, total de dirigentes, de cargos de decisão e de mulheres em cargos de decisão, proporção de mulheres em cargos de decisão.
+- **Eleições majoritárias:** mulher eleita e pessoa negra eleita para o governo do estado ou a prefeitura.
+- **Distrito:** vagas, comparecimento e perfil do eleitorado da eleição e informações socioeconômicas do ano da eleição (código 11).
+
+## Índices de equidade (DRI)
+
+Os índices de equidade de gênero e racial (códigos 16 e 17) usam o *Descriptive Representation Index*, modificação do índice de Ransom e Sutch (2001) (ver <https://sites.google.com/alumni.usp.br/michael/currículo>), implementado na função `dri()` de `0_funcoes_auxiliares.R`:
+
+$$DRI(b_j, p) = \frac{b_j - p}{\sqrt{(b_j - p)^2 + b_j(1 - b_j)}}$$
+
+em que $b_j$ é a participação do grupo (mulheres; pessoas negras = pretas e pardas) em $j$ (candidaturas, votos, receitas, recursos públicos, recursos de partidos, recursos de direções, eleitos; variáveis `prop_*`) e $p$ é a participação do grupo na população de referência do distrito (`denominador_*`): mulheres no eleitorado (gênero, código 10) e pessoas negras na população (raça, código 11). O DRI varia de −1 (grupo ausente) a 1, com 0 na paridade ($b_j = p$); valores negativos indicam sub-representação. É NA quando a medida é nula no distrito ou na lista (por exemplo, lista sem eleitos) e, nas medidas raciais, em 2010 e 2012 (sem cor/raça dos candidatos).
+
+## Dicionários (código 18)
+
+Um arquivo por banco final em `3 Produtos finais/dicionarios` (`dicionario_<banco>.xlsx`), mais `0_indice_dicionarios.xlsx` com todos os bancos (unidade, linhas, anos, número de variáveis). Cada dicionário tem uma aba `banco` (unidade de análise, arquivo, linhas, anos, código que o produz) e uma aba `variaveis` com:
+
+| Coluna | Conteúdo |
+|---|---|
+| `variavel` | nome da coluna no banco |
+| `fonte` | origem do dado (fonte primária e código que o produz) |
+| `operacionalizacao` | o que a variável mede e como foi construída |
+| `cobertura_anos` | anos em que a variável tem pelo menos um valor preenchido (calculado nos dados) |
+| `pct_preenchido` | % de linhas com valor não ausente |
+| `tipo` | numérica, texto ou data |
+
+A fonte e a operacionalização vêm de uma tabela de regras no próprio código 18 (expressões regulares sobre o nome da variável); a cobertura é calculada nos dados a cada execução. Ao criar uma variável nova em algum código, acrescente a regra correspondente: o código 18 lista, no relatório de execução, as variáveis sem descrição.
+
+# Decisões e limitações
+
+1. **Presidente** — o banco de candidaturas a presidente fica na Etapa 2 (`2b Eleições/bancos/candidaturas_presidente.xlsx`), fora da lista de produtos finais; as candidaturas presidenciais dos partidos entram nos bancos de listas (`presidente_*`).
+2. **Votos de legenda** — a participação do candidato nos votos do partido (`pct_votos_partido`) e os votos das listas partidárias (`votos_nominais`, `pct_votos_nominais_distrito`) usam só os votos nominais dos candidatos: os votos de legenda não entram, porque as tabelas de resultados por candidato não os atribuem aos partidos (seria preciso a tabela de resultados por partido).
+3. **Coligações e federações** — nas listas partidárias, a unidade é o partido, não a coligação proporcional (até 2018) ou a federação (desde 2022); nas candidaturas majoritárias, só a candidatura própria do partido é identificada.
+4. **Socioeconômico entre censos** — a composição por sexo e cor/raça é constante dentro da janela de cada censo (2010 para 2010–2015; 2022 para 2016–2025); o PIB municipal só existe até 2023, e seus componentes até 2021.
+5. **Cor/raça dos candidatos** — só a partir de 2014; as medidas raciais ficam NA em 2010 e 2012.
+
+

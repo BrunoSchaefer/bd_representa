@@ -1,0 +1,93 @@
+here() starts at <raiz do projeto>
+── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
+✔ dplyr     1.2.0     ✔ readr     2.1.6
+✔ forcats   1.0.1     ✔ stringr   1.6.0
+✔ ggplot2   4.0.2     ✔ tibble    3.3.1
+✔ lubridate 1.9.5     ✔ tidyr     1.3.2
+✔ purrr     1.2.1     
+── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+✖ dplyr::filter() masks stats::filter()
+✖ dplyr::lag()    masks stats::lag()
+ℹ Use the conflicted package (<http://conflicted.r-lib.org/>) to force all conflicts to become errors
+
+Anexando pacote: 'data.table'
+
+Os seguintes objetos são mascarados por 'package:lubridate':
+
+    hour, isoweek, isoyear, mday, minute, month, quarter, second, wday,
+    week, yday, year
+
+Os seguintes objetos são mascarados por 'package:dplyr':
+
+    between, first, last
+
+O seguinte objeto é mascarado por 'package:purrr':
+
+    transpose
+
+
+=== Nacional — Comissão Executiva ===
+# A tibble: 11 × 3
+     ANO unidades com_distrito
+   <int>    <int>        <dbl>
+ 1  2015       17          100
+ 2  2016       28            0
+ 3  2017       32            0
+ 4  2018       30          100
+ 5  2019       27          100
+ 6  2020       26            0
+ 7  2021       25            0
+ 8  2022       24          100
+ 9  2023       22          100
+10  2024       19            0
+11  2025       18            0
+
+=== Nacional — Órgão de direção ===
+# A tibble: 11 × 3
+     ANO unidades com_distrito
+   <int>    <int>        <dbl>
+ 1  2015       15          100
+ 2  2016       27            0
+ 3  2017       31            0
+ 4  2018       29          100
+ 5  2019       26          100
+ 6  2020       26            0
+ 7  2021       26            0
+ 8  2022       24          100
+ 9  2023       24          100
+10  2024       25            0
+11  2025       24            0
+
+=== Estadual ===
+# A tibble: 11 × 3
+     ANO unidades com_distrito
+   <int>    <int>        <dbl>
+ 1  2015      378          100
+ 2  2016      663            0
+ 3  2017      756            0
+ 4  2018      802          100
+ 5  2019      630          100
+ 6  2020      759            0
+ 7  2021      721            0
+ 8  2022      708          100
+ 9  2023      624          100
+10  2024      658            0
+11  2025      578            0
+
+=== Municipal ===
+# A tibble: 11 × 3
+     ANO unidades com_distrito
+   <int>    <int>        <dbl>
+ 1  2015    64061          0  
+ 2  2016    95571         99.9
+ 3  2017    88530         99.9
+ 4  2018    67508          0  
+ 5  2019    63497          0  
+ 6  2020    73957         99.9
+ 7  2021    62391         99.9
+ 8  2022    47928          0  
+ 9  2023    45021          0  
+10  2024    62761        100  
+11  2025    49325        100  
+Bancos salvos em: <raiz do projeto>/2 Agregação dos dados/1b Partidos/bancos 
+Houve 12 avisos (use warnings() para vê-los)

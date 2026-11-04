@@ -1,0 +1,333 @@
+---
+title: "10 Comparecimento, Vagas e Eleitorado Gerais"
+author: "Bruno Schaefer (IESP-UERJ)"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Dados das eleições gerais (2010, 2014, 2018, 2022)
+
+Por distrito
+
+Retirados da basedosdados
+
+
+Posteriormente, validar a partir das informaçoes retiradas diretamente do Portal de Dados Abertos do TSE 
+
+https://dadosabertos.tse.jus.br/dataset/ 
+
+
+## Pacotes e configuração
+
+```{r}
+
+library(tidyverse)
+library(basedosdados)
+library(stringr)
+library(stringi)
+library(openxlsx)
+library(scales)
+library(here)
+source(here("0 Funções, estrutura e passo-a-passo", "0_pastas.R"))
+
+set_billing_id("seu-projeto") ## substituir por seu projeto
+
+
+```
+
+
+## Coleta dos dados
+
+
+### Perfil do eleitorado
+
+
+```{r}
+
+bd_eleitorado <- basedosdados::bdplyr("basedosdados.br_tse_eleicoes.perfil_eleitorado_municipio_zona") %>%
+  dplyr::filter(
+    ano %in% c(2010, 2014, 2018, 2022)
+  ) %>%
+  dplyr::select(
+    ano, sigla_uf,
+    genero, estado_civil, instrucao, grupo_idade, eleitores
+  )
+
+caracteristicas_eleitorado <- basedosdados::bd_collect(bd_eleitorado)
+rm(bd_eleitorado); gc()
+
+
+```
+
+
+#### Codificação
+
+
+```{r}
+
+## Categorizar o dado
+
+summary(caracteristicas_eleitorado)
+
+table(caracteristicas_eleitorado$estado_civil)
+
+table(caracteristicas_eleitorado$genero)
+
+table(caracteristicas_eleitorado$instrucao)
+
+table(caracteristicas_eleitorado$grupo_idade)
+
+
+## Agrupar por município
+
+chaves <- c("ano", "sigla_uf")
+
+## 1. Total de eleitores
+eleitorado_total <- caracteristicas_eleitorado %>%
+  group_by(across(all_of(chaves))) %>%
+  summarise(total_eleitores = sum(eleitores, na.rm = TRUE), .groups = "drop")
+
+## 2. Gênero (2 = masculino, 4 = feminino, 0 = não informado)
+eleitorado_genero <- caracteristicas_eleitorado %>%
+  mutate(genero = recode(genero,
+                         "2" = "homens",
+                         "4" = "mulheres",
+                         "0" = "genero_ni")) %>%
+  count(across(all_of(chaves)), genero, wt = eleitores, name = "n") %>%
+  pivot_wider(names_from = genero, values_from = n,
+              names_prefix = "eleitores_", values_fill = 0)
+
+## 3. Instrução
+eleitorado_instrucao <- caracteristicas_eleitorado %>%
+  mutate(instrucao = recode(instrucao,
+                            "0" = "instr_ni",
+                            "1" = "analfabeto",
+                            "2" = "le_escreve",
+                            "3" = "fund_incompleto",
+                            "4" = "fund_completo",
+                            "5" = "medio_incompleto",
+                            "6" = "medio_completo",
+                            "7" = "sup_incompleto",
+                            "8" = "sup_completo")) %>%
+  count(across(all_of(chaves)), instrucao, wt = eleitores, name = "n") %>%
+  pivot_wider(names_from = instrucao, values_from = n,
+              names_prefix = "eleitores_", values_fill = 0)
+
+## 4. Juntar e calcular proporções
+eleitorado_uf <- eleitorado_total %>%
+  left_join(eleitorado_genero,    by = chaves) %>%
+  left_join(eleitorado_instrucao, by = chaves) %>%
+  mutate(across(starts_with("eleitores_"),
+                ~ .x / total_eleitores,
+                .names = "prop_{sub('eleitores_', '', .col)}"))
+
+
+eleitorado_uf <- eleitorado_uf %>%
+  filter(sigla_uf != "ZZ")
+
+
+
+
+
+```
+
+
+
+
+
+### Vagas
+
+
+```{r}
+
+
+vagas <- basedosdados::bdplyr("basedosdados.br_tse_eleicoes.vagas") %>%
+  dplyr::filter(ano %in% c(2010, 2014, 2018, 2022)) %>%
+  basedosdados::bd_collect()
+
+names(vagas)                  # confirmar se existe tipo_eleicao (ou similar)
+count(vagas, tipo_eleicao)
+
+# Vagas da eleição ordinária, por UF e cargo (presidente fica de fora: a
+# unidade de análise é a UF). Os cargos são restringidos aos de votação na
+# etapa de junção.
+vagas_uf <- vagas %>%
+  filter(tipo_eleicao %in% "eleicao ordinaria",
+         sigla_uf != "ZZ",
+         cargo != "presidente") %>%
+  group_by(ano, sigla_uf, cargo) %>%
+  summarise(vagas = max(vagas), .groups = "drop")
+
+
+
+```
+
+
+
+
+
+
+
+### Comparecimento
+
+
+```{r}
+
+
+bd_eleitorado <- basedosdados::bdplyr("basedosdados.br_tse_eleicoes.detalhes_votacao_municipio") %>%
+  dplyr::filter(
+    ano %in% c(2010, 2014, 2018, 2022)
+  ) %>%
+  dplyr::select(
+    ano, sigla_uf,
+    id_municipio, turno, 
+    cargo, aptos, votos_validos,
+    votos_brancos, votos_nulos, 
+    votos_legenda, votos_nominais,
+    abstencoes, tipo_eleicao
+  )
+
+comparecimento <- basedosdados::bd_collect(bd_eleitorado)
+rm(bd_eleitorado); gc()
+
+
+
+
+
+```
+
+#### Codificação
+
+```{r}
+
+vars_votos <- c("aptos", "votos_validos", "votos_brancos", "votos_nulos",
+                "votos_legenda", "votos_nominais", "abstencoes")
+
+comparecimento_uf <- comparecimento %>%
+  filter(tipo_eleicao %in% "eleicao ordinaria") %>%
+  group_by(ano, sigla_uf, cargo, turno) %>%
+  summarise(
+    n_municipios = n_distinct(id_municipio),
+    across(all_of(vars_votos), ~ sum(as.numeric(.x), na.rm = TRUE)),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    comparecimento     = aptos - abstencoes,
+    votos_totais       = votos_validos + votos_brancos + votos_nulos,
+    votos_por_eleitor  = votos_totais / comparecimento,   # ≈ 1; ≈ 2 no Senado com 2 vagas
+
+    pct_comparecimento = 100 * comparecimento / aptos,
+    pct_abstencao      = 100 * abstencoes / aptos,
+    pct_validos        = 100 * votos_validos / votos_totais,
+    pct_brancos        = 100 * votos_brancos / votos_totais,
+    pct_nulos          = 100 * votos_nulos / votos_totais,
+    pct_legenda        = if_else(votos_validos > 0, 100 * votos_legenda / votos_validos, NA_real_)
+  )
+
+
+# 1. O filtro pegou o rótulo certo? (confira a grafia exata)
+count(comparecimento, ano, tipo_eleicao)
+
+# 2. Votos por eleitor: ~1 em todos os cargos, ~2 no Senado de 2010 e 2018
+comparecimento_uf %>%
+  group_by(ano, cargo, turno) %>%
+  summarise(votos_por_eleitor = round(sum(votos_totais) / sum(comparecimento), 2),
+            .groups = "drop") %>%
+  print(n = Inf)
+
+# 3. Nos cargos proporcionais, válidos = legenda + nominais
+comparecimento_uf %>%
+  filter(votos_legenda > 0, votos_validos != votos_legenda + votos_nominais)
+
+# 4. 2º turno só deve aparecer para presidente e governador
+count(comparecimento_uf, ano, turno, cargo)
+
+comparecimento_uf <- comparecimento_uf %>%
+  filter(sigla_uf != "ZZ")
+
+comparecimento_uf %>%
+  filter((ano == 2014 & sigla_uf %in% c("AM", "TO") & cargo == "governador") |
+         (ano == 2018 & sigla_uf == "MT" & cargo == "senador")) %>%
+  select(ano, sigla_uf, cargo, turno, aptos, comparecimento, votos_totais, votos_por_eleitor)
+
+count(comparecimento, ano, tipo_eleicao)
+
+
+
+```
+
+
+
+
+## Juntar bancos de dados
+
+
+Juntar bancos de dados por ano, distrito e cargo
+
+
+```{r}
+
+chaves_cargo <- c("ano", "sigla_uf", "cargo")
+
+# 1. Vagas: só os cargos com votação ------------------------------------------
+vagas_uf <- vagas_uf %>%
+  filter(cargo %in% unique(comparecimento_uf$cargo))
+
+# Uma linha por chave? (deve voltar vazio)
+vagas_uf %>% count(across(all_of(chaves_cargo))) %>% filter(n > 1)
+
+# Senado: 2 em 2010/2018, 1 em 2014/2022
+vagas_uf %>% filter(cargo == "senador") %>% count(ano, vagas)
+
+# 2. Votação: 1º turno, sem presidente ------------------------------------------
+comp_t1 <- comparecimento_uf %>%
+  filter(turno == 1, cargo != "presidente") %>%
+  select(-turno)
+
+# 3. Junção ---------------------------------------------------------------------
+base_uf <- comp_t1 %>%
+  left_join(vagas_uf, by = chaves_cargo, relationship = "one-to-one") %>%
+  left_join(eleitorado_uf, by = c("ano", "sigla_uf"), relationship = "many-to-one") %>%
+  mutate(
+    eleitores_por_vaga = aptos / vagas,
+    votos_por_vaga     = votos_validos / vagas,
+    razao_aptos_perfil = aptos / total_eleitores
+  )
+
+nrow(base_uf)   # 432
+
+
+```
+
+
+
+
+
+
+
+
+## Exportação
+
+
+```{r}
+
+dir.create(pasta$prod_distritos, showWarnings = FALSE, recursive = TRUE)
+
+
+
+write.xlsx(
+  base_uf,
+  file      = file.path(pasta$prod_distritos, "base_uf.xlsx"),
+  rowNames  = FALSE,
+  overwrite = TRUE
+)
+
+
+```
+
+
+

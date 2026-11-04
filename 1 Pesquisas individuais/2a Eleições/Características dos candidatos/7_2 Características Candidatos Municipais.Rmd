@@ -1,0 +1,130 @@
+---
+title: "7_2 Características Candidatos Municipais"
+author: "Bruno Schaefer (IESP-UERJ)"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+Dados das características dos candidatos das eleições municipais (2012, 2016, 2020 e 2024)
+
+Por candidato
+
+Retirados da basedosdados
+
+
+Posteriormente, validar a partir das informaçoes retiradas diretamente do Portal de Dados Abertos do TSE 
+
+https://dadosabertos.tse.jus.br/dataset/ 
+
+
+## Pacotes e configuração
+
+```{r}
+
+library(tidyverse)
+library(basedosdados)
+library(stringr)
+library(stringi)
+library(openxlsx)
+library(scales)
+library(deflateBR)
+library(here)
+source(here("0 Funções, estrutura e passo-a-passo", "0_pastas.R"))
+
+set_billing_id("seu-projeto") ## substituir por seu projeto
+
+# Somente eleições ordinárias. "eleicoes municipais 2020 - ap" é a eleição
+# ordinária de Macapá (AP) de 2020, adiada para dezembro por causa do apagão
+# no estado; as demais categorias são eleições suplementares e novas eleições.
+tipos_ordinarios <- c("eleicao ordinaria", "eleicoes municipais 2020 - ap")
+
+
+
+```
+
+
+
+## Dados Candidatos
+
+### Carregar dados
+
+```{r}
+
+bd_rec <- basedosdados::bdplyr("basedosdados.br_tse_eleicoes.candidatos") %>%
+  dplyr::filter(ano %in% c(2012, 2016, 2020, 2024), tipo_eleicao %in% tipos_ordinarios) %>%
+  dplyr::select(
+    ano, cargo, sigla_uf, tipo_eleicao, id_municipio, id_municipio_tse,
+    sequencial,   # identificador da candidatura no TSE (chave para bens e resultados)
+    numero_partido, sigla_partido, numero,
+    nome, nome_urna, titulo_eleitoral, cpf,
+    situacao, data_nascimento, idade, genero, instrucao, ocupacao,
+    estado_civil, nacionalidade, sigla_uf_nascimento, 
+    municipio_nascimento, email, raca
+  )
+
+candidatos <- basedosdados::bd_collect(bd_rec)
+rm(bd_rec); gc()
+
+names(candidatos)
+
+summary(candidatos)
+
+
+
+
+
+```
+
+
+## Filtrar bases de dados
+
+
+
+
+```{r}
+
+table(candidatos$situacao, useNA = "always")
+
+
+candidaturas_municipais <- candidatos %>%
+  filter(situacao %in% c("deferido com recurso", "deferido"))
+
+
+table(candidatos$tipo_eleicao, useNA = "always")
+
+candidaturas_municipais <- candidaturas_municipais %>%
+  filter(tipo_eleicao %in% tipos_ordinarios)
+
+
+
+```
+
+
+
+
+# Exportar 
+
+
+```{r}
+
+dir.create(pasta$prod_candidatos, showWarnings = FALSE, recursive = TRUE)
+
+
+
+# .csv (separador ";"): o banco passa do limite de linhas do Excel (1.048.576)
+data.table::fwrite(
+  candidaturas_municipais,
+  file.path(pasta$prod_candidatos, "candidaturas_municipais.csv"),
+  sep = ";"
+)
+
+
+
+```
+
+

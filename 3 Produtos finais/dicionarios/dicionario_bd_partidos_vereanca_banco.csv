@@ -1,0 +1,10 @@
+campo;valor
+banco;bd_partidos_vereanca
+arquivo;3 Produtos finais/bancos/bd_partidos_vereanca.csv
+unidade de análise;ano-partido-município: lista do partido para vereador
+linhas;228.433
+anos;2012, 2016, 2020, 2024
+variáveis;330
+código que produz;3 Produtos finais/17 Produtos finais
+documentação;0 Funções, estrutura e passo-a-passo/0 Estrutura de Montagem do Banco de Dados.Rmd
+gerado em;30/09/2026

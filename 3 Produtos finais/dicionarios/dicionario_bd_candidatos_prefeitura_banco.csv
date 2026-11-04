@@ -1,0 +1,10 @@
+campo;valor
+banco;bd_candidatos_prefeitura
+arquivo;3 Produtos finais/bancos/bd_candidatos_prefeitura.xlsx
+unidade de análise;candidatura a prefeito (eleições municipais)
+linhas;63.124
+anos;2012, 2016, 2020, 2024
+variáveis;191
+código que produz;3 Produtos finais/15 Produtos finais
+documentação;0 Funções, estrutura e passo-a-passo/0 Estrutura de Montagem do Banco de Dados.Rmd
+gerado em;30/09/2026

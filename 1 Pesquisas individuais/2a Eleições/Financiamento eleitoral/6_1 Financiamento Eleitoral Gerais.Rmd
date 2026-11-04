@@ -1,0 +1,480 @@
+---
+title: "6_1 Financiamento Eleitoral Gerais "
+author: "Bruno Schaefer (IESP-UERJ)"
+date: "2026-06-11"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+
+Dados de financiamento das eleições gerais (2010, 2014, 2018 e 2022)
+
+Por candidato
+
+Em relação às receitas e as despesas
+
+Retirados da basedosdados
+
+
+Posteriormente, validar a partir das informaçoes retiradas diretamente do Portal de Dados Abertos do TSE 
+
+https://dadosabertos.tse.jus.br/dataset/ 
+
+
+## Pacotes e configuração
+
+```{r}
+
+library(tidyverse)
+library(basedosdados)
+library(stringr)
+library(stringi)
+library(openxlsx)
+library(scales)
+library(deflateBR)
+library(here)
+source(here("0 Funções, estrutura e passo-a-passo", "0_pastas.R"))
+
+set_billing_id("seu-projeto") ## substituir por seu projeto
+
+# Somente eleições ordinárias. "eleicoes municipais 2020 - ap" é a eleição
+# ordinária de Macapá (AP) de 2020, adiada para dezembro por causa do apagão
+# no estado; as demais categorias são eleições suplementares e novas eleições.
+tipos_ordinarios <- c("eleicao ordinaria", "eleicoes municipais 2020 - ap")
+
+
+
+```
+
+
+## Dados Receitas
+
+### Carregar dados
+
+```{r}
+
+bd_rec <- basedosdados::bdplyr("basedosdados.br_tse_eleicoes.receitas_candidato") %>%
+  dplyr::filter(ano %in% c(2010, 2014, 2018, 2022), tipo_eleicao %in% tipos_ordinarios) %>%
+  dplyr::select(
+    ano, cargo, sigla_uf, tipo_eleicao,
+    numero_partido, sigla_partido, numero_candidato, sequencial_candidato,
+    fonte_receita, origem_receita, especie_receita,
+    valor_receita, nome_doador,
+    cargo_candidato_doador, numero_partido_doador, numero_candidato_doador,
+    descricao_receita
+  )
+
+financiamento <- basedosdados::bd_collect(bd_rec)
+rm(bd_rec); gc()
+
+names(financiamento)
+
+summary(financiamento)
+
+table(financiamento$origem_receita, useNA = "always")
+
+table(financiamento$fonte_receita, useNA = "always")
+
+doadores <- financiamento %>%
+  count(nome_doador, name = "n_doacoes", sort = TRUE)
+
+head(doadores, 50)
+
+
+
+```
+
+
+
+
+### Categorização 
+
+Por origem
+
+Por fonte 
+
+Por doador
+
+
+```{r}
+
+financiamento <- financiamento %>%
+  mutate(
+    recursos_pessoa_fisica = if_else(
+      origem_receita %in% "recursos de pessoas fisicas", 1, 0),
+    recursos_pessoa_juridica = if_else(
+      origem_receita %in% "recursos de pessoas juridicas", 1, 0),
+        recursos_proprios = if_else(
+      origem_receita %in% "recursos proprios", 1, 0),
+    recursos_publicos = if_else(
+      fonte_receita %in% c("fundo especial", "fundo partidao", "fundo partidario"), 1, 0),
+    recursos_partidos = if_else(
+      origem_receita %in% "recursos de partido politico", 1, 0),
+    recursos_outros_candidatos = if_else(
+      origem_receita %in% c("recursos de outros candidatos",
+                            "recursos de outros candidatos/comites"), 1, 0),
+    recursos_partidos_candidatos = pmax(recursos_partidos, recursos_outros_candidatos)
+  )
+
+
+table(financiamento$recursos_publicos, financiamento$recursos_partidos, useNA = "always")
+
+table(financiamento$recursos_publicos, financiamento$recursos_outros_candidatos, useNA = "always")
+
+# --- 7.2 Direções partidárias (a partir do nome do doador) --------------------
+
+padrao_nacional <- "\\bDIR(ETORIO|ECAO)?\\.? ?NAC|EXECUTIVA NACIONAL|COMISSAO PROVISORIA NACIONAL"
+padrao_estadual <- "\\bDIR(ETORIO|ECAO)?\\.? ?(REG|EST)|EXECUTIVA (REGIONAL|ESTADUAL)|COMISSAO PROVISORIA (REGIONAL|ESTADUAL)"
+
+financiamento <- financiamento %>%
+  mutate(
+    doador_norm = nome_doador %>%
+      stri_trans_general("Latin-ASCII") %>% str_to_upper() %>% str_squish(),
+    recursos_direcao_nacional  = if_else(str_detect(doador_norm, padrao_nacional) %in% TRUE, 1, 0),
+    recursos_direcao_estadual  = if_else(str_detect(doador_norm, padrao_estadual) %in% TRUE, 1, 0),
+    recursos_direcao_partidaria = pmax(recursos_direcao_nacional, recursos_direcao_estadual)
+  )
+
+table(financiamento$recursos_direcao_nacional, useNA = "always")
+
+table(financiamento$recursos_direcao_estadual, useNA = "always")
+
+table(financiamento$recursos_publicos, financiamento$recursos_direcao_nacional, useNA = "always")
+
+table(financiamento$recursos_partidos, financiamento$recursos_direcao_nacional, useNA = "always")
+
+table(financiamento$recursos_publicos, financiamento$recursos_direcao_estadual, useNA = "always")
+
+table(financiamento$recursos_partidos, financiamento$recursos_direcao_estadual, useNA = "always")
+
+# --- 7.3 Recursos públicos repassados por cada direção ------------------------
+# Do total de recursos públicos (FEFC + Fundo Partidário), quanto chega pela
+# direção nacional e quanto pela direção estadual. Usado no código 8
+# (características da lista).
+
+financiamento <- financiamento %>%
+  mutate(
+    recursos_publicos_nacional = recursos_publicos * recursos_direcao_nacional,
+    recursos_publicos_estadual = recursos_publicos * recursos_direcao_estadual
+  )
+
+table(financiamento$ano, financiamento$recursos_publicos_nacional)
+table(financiamento$ano, financiamento$recursos_publicos_estadual)
+
+names(financiamento)
+
+
+
+```
+
+
+
+
+
+
+### Unificação ao nível do candidato
+
+
+```{r}
+
+names(financiamento)
+
+vars_recursos <- c(
+  "recursos_publicos", "recursos_pessoa_fisica", "recursos_pessoa_juridica",
+  "recursos_proprios",
+  "recursos_partidos", "recursos_outros_candidatos", "recursos_partidos_candidatos",
+  "recursos_direcao_nacional", "recursos_direcao_estadual", "recursos_direcao_partidaria",
+  "recursos_publicos_nacional", "recursos_publicos_estadual"
+)
+
+# Chave do candidato SEM a sigla (ver topo). O número do partido também sai
+# da chave: dentro de ano x cargo x UF o número do candidato já é único.
+dados_cand_fin <- financiamento %>%
+  mutate(valor_receita = as.numeric(valor_receita)) %>%
+  group_by(ano, cargo, sigla_uf, numero_candidato) %>%
+  summarise(
+    sequencial_candidato = dplyr::first(na.omit(sequencial_candidato)),
+    n_receitas    = n(),
+    soma_receitas = sum(valor_receita, na.rm = TRUE),
+    across(all_of(vars_recursos),
+           ~ sum(valor_receita[.x == 1], na.rm = TRUE),
+           .names = "soma_{.col}"),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    across(starts_with("soma_recursos_"),
+           ~ if_else(soma_receitas > 0, 100 * .x / soma_receitas, NA_real_),
+           .names = "{sub('soma_', 'pct_', .col)}")
+  )
+
+glimpse(dados_cand_fin)
+
+dados_cand_fin %>%
+  group_by(ano) %>%
+  summarise(across(starts_with("pct_"), ~ round(mean(.x, na.rm = TRUE), 1)))
+
+# Nenhum percentual deveria passar de 100
+dados_cand_fin %>% filter(if_any(starts_with("pct_"), ~ .x > 100))
+
+
+
+```
+
+
+
+
+
+### Deflação
+
+```{r}
+
+names(dados_cand_fin)
+
+dados_cand_fin <- dados_cand_fin %>%
+  # Deflaciona variáveis pelo IPCA de 12/2025
+  mutate(across(c(soma_receitas, starts_with("soma_recursos_")),   # selecionar variáveis
+                ~ ipca(.x, as.Date(paste0(ano, "-12-31")), "12/2025")))
+
+
+summary(dados_cand_fin)
+
+dados_cand_fin <- dados_cand_fin %>%
+  select(-n_receitas)
+
+names(dados_cand_fin)
+
+
+
+```
+
+
+
+
+
+## Dados Despesas
+
+
+### Carregar dados
+
+
+```{r}
+
+
+bd_rec <- basedosdados::bdplyr("basedosdados.br_tse_eleicoes.despesas_candidato") %>%
+  dplyr::filter(ano %in% c(2010, 2014, 2018, 2022), tipo_eleicao %in% tipos_ordinarios) %>%
+  dplyr::select(
+    ano, cargo, sigla_uf, tipo_eleicao,
+    numero_partido, sigla_partido, numero_candidato, sequencial_candidato,
+    valor_despesa, tipo_despesa, origem_despesa, 
+    descricao_despesa
+  )
+
+despesas <- basedosdados::bd_collect(bd_rec)
+rm(bd_rec); gc()
+
+names(despesas)
+
+summary(despesas)
+
+table(despesas$origem_despesa, useNA = "always")
+
+table(despesas$tipo_despesa, useNA = "always")
+
+
+
+```
+
+
+
+
+
+### Categorização 
+
+Por tipo 
+
+```{r}
+
+
+table(despesas$origem_despesa)
+
+despesas <- despesas %>%
+  mutate(tipo_gasto = case_when(
+    origem_despesa %in% c(
+      "atividades de militancia e mobilizacao de rua", 
+      "cessao ou locacao de veiculos", 
+      "combustiveis e lubrificantes", 
+      "comicios", 
+      "despesas com pessoal", 
+      "despesas com transporte ou deslocamento", 
+      "eventos de promocao da candidatura", 
+      "publicidade por adesivos", 
+      "publicidade por carros de som", 
+      "publicidade por materiais impressos"
+    ) ~ "Tradicional",
+    
+    origem_despesa %in% c(
+      "criacao e inclusao de paginas na internet", 
+      "pesquisas ou testes eleitorais", 
+      "producao de jingles vinhetas e slogans", 
+      "producao de programas de radio televisao ou video", 
+      "publicidade por jornais e revistas", 
+      "servicos prestados por terceiros", 
+      "servicos proprios prestados por terceiros",
+      "despesa com impulsionamento de conteudos" # Adicionado aqui
+    ) ~ "Moderno",
+    
+    origem_despesa %in% c(
+      "agua", 
+      "alimentacao", 
+      "aquisicao/doacao de bens moveis ou imoveis", 
+      "correspondencias e despesas postais", 
+      "energia eletrica", 
+      "despesas com hospedagem", 
+      "locacao/cessao de bens imoveis", 
+      "locacao/cessao de bens moveis (exceto veiculos)", 
+      "materiais de expediente", 
+      "pre-instalacao fisica de comite de campanha", 
+      "telefone"
+    ) ~ "Organização",
+    
+    origem_despesa %in% c(
+      "diversas a especificar", 
+      "doacoes financeiras a outros candidatos/partidos", 
+      "encargos financeiros taxas bancarias e/ou op cartao de credito", 
+      "encargos sociais", 
+      "impostos contribuicoes e taxas", 
+      "multas eleitorais", 
+      "reembolsos de gastos realizados por eleitores"
+    ) ~ "Outras",
+    
+    TRUE ~ "Outras"
+  ))
+
+
+despesas <- despesas %>%
+  mutate(gastos_internet = case_when(
+    origem_despesa %in% c("criacao e inclusao de paginas na internet", "despesa com impulsionamento de conteudos") ~ 1,
+    TRUE ~ 0
+  ))
+
+
+```
+
+
+
+
+### Unificação ao nível do candidato
+
+
+```{r}
+
+names(despesas)
+
+despesas_candidato <- despesas %>%
+  group_by(ano, cargo, sigla_uf, numero_candidato,
+           numero_partido) %>%
+  summarise(sequencial_candidato_desp = dplyr::first(na.omit(sequencial_candidato)),
+            despesas_total_can = sum(valor_despesa, na.rm = TRUE),
+            despesas_internet_can = sum(valor_despesa[gastos_internet == 1], na.rm = TRUE),
+            despesas_tradicional_can = sum(valor_despesa[tipo_gasto == "Tradicional"], na.rm = TRUE),
+            despesas_moderno_can = sum(valor_despesa[tipo_gasto == "Moderno"], na.rm = TRUE),
+            despesas_organizacao_can = sum(valor_despesa[tipo_gasto == "Organização"], na.rm = TRUE),
+            despesas_outras_can = sum(valor_despesa[tipo_gasto == "Outras"], na.rm = TRUE)
+  ) %>%
+  ungroup() %>% 
+  mutate(pct_despesas_internet = (despesas_internet_can/despesas_total_can)*100,
+         pct_despesas_tradicional = (despesas_tradicional_can/despesas_total_can)*100,
+         pct_despesas_moderno = (despesas_moderno_can/despesas_total_can)*100,
+         pct_despesas_organizacao = (despesas_organizacao_can/despesas_total_can)*100)
+
+summary(despesas_candidato)
+
+```
+
+
+
+
+
+### Deflação
+
+```{r}
+
+names(despesas_candidato)
+
+despesas_candidato <- despesas_candidato %>%
+  # Deflaciona variáveis pelo IPCA de 12/2025
+  mutate(across(c(despesas_total_can, starts_with("despesas_")),   # selecionar variáveis
+                ~ ipca(.x, as.Date(paste0(ano, "-12-31")), "12/2025")))
+
+
+summary(despesas_candidato)
+
+names(despesas_candidato)
+
+
+
+```
+
+
+
+
+
+## Juntar receitas e despesas
+
+
+```{r}
+
+names(despesas_candidato)
+
+names(dados_cand_fin)
+
+financiamento_gerais <- left_join(dados_cand_fin, despesas_candidato,
+                                  by = c("ano", "cargo",
+                                         "sigla_uf", "numero_candidato")) %>%
+  # Sequencial do candidato: das receitas; se ausente, das despesas
+  mutate(sequencial_candidato = coalesce(sequencial_candidato, sequencial_candidato_desp)) %>%
+  select(-sequencial_candidato_desp)
+
+summary(financiamento_gerais)
+
+
+```
+
+
+
+
+
+
+## Exportação
+
+
+```{r}
+
+dir.create(pasta$prod_candidatos, showWarnings = FALSE, recursive = TRUE)
+
+
+
+write.xlsx(
+  financiamento_gerais,
+  file      = file.path(pasta$prod_candidatos, "financiamento_gerais.xlsx"),
+  rowNames  = FALSE,
+  overwrite = TRUE
+)
+
+
+```
+
+
+
+
+
+
+
+
+
+

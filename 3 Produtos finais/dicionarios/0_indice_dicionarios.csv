@@ -1,0 +1,18 @@
+banco;arquivo;unidade;linhas;anos;variaveis;codigo;dicionario
+bd_dirigentes_nacional;bd_dirigentes_nacional.xlsx;"ano-dirigente-cargo (direção nacional; versão restritiva)";40663;2015–2025;80;14;dicionario_bd_dirigentes_nacional.xlsx
+bd_dirigentes_estadual;bd_dirigentes_estadual.xlsx;"ano-dirigente-cargo-UF (direções estaduais e regional do DF; versão restritiva)";220230;2015–2025;80;14;dicionario_bd_dirigentes_estadual.xlsx
+bd_dirigentes_municipal;bd_dirigentes_municipal;"ano-dirigente-cargo-município (direções municipais e zonais do DF; versão ampla; um arquivo por ano)";8548086;2015–2025;78;14;dicionario_bd_dirigentes_municipal.xlsx
+bd_diretorios_nacional;bd_diretorios_nacional.xlsx;"ano-partido (órgão de direção nacional; Comissão Executiva com prefixo ce_)";336;2015–2025;271;14;dicionario_bd_diretorios_nacional.xlsx
+bd_diretorios_estadual;bd_diretorios_estadual.xlsx;ano-partido-UF;7277;2015–2025;270;14;dicionario_bd_diretorios_estadual.xlsx
+bd_diretorios_municipal;bd_diretorios_municipal.csv;ano-partido-município;720550;2015–2025;263;14;dicionario_bd_diretorios_municipal.xlsx
+bd_candidatos_governadoria;bd_candidatos_governadoria.xlsx;candidatura a governador (eleições gerais);697;2010, 2014, 2018, 2022;185;15;dicionario_bd_candidatos_governadoria.xlsx
+bd_candidatos_senado;bd_candidatos_senado.xlsx;candidatura a senador (eleições gerais);894;2010, 2014, 2018, 2022;185;15;dicionario_bd_candidatos_senado.xlsx
+bd_candidatos_camara;bd_candidatos_camara.xlsx;candidatura a deputado federal (eleições gerais);27841;2010, 2014, 2018, 2022;185;15;dicionario_bd_candidatos_camara.xlsx
+bd_candidatos_assembleia;bd_candidatos_assembleia.xlsx;candidatura a deputado estadual ou distrital (eleições gerais);60607;2010, 2014, 2018, 2022;185;15;dicionario_bd_candidatos_assembleia.xlsx
+bd_candidatos_prefeitura;bd_candidatos_prefeitura.xlsx;candidatura a prefeito (eleições municipais);63124;2012, 2016, 2020, 2024;191;15;dicionario_bd_candidatos_prefeitura.xlsx
+bd_candidatos_vereanca;bd_candidatos_vereanca.csv;candidatura a vereador (eleições municipais);1751307;2012, 2016, 2020, 2024;191;15;dicionario_bd_candidatos_vereanca.xlsx
+bd_partidos_camara;bd_partidos_camara.xlsx;ano-partido-UF: lista do partido para deputado federal;2933;2010, 2014, 2018, 2022;353;17;dicionario_bd_partidos_camara.xlsx
+bd_partidos_assembleias;bd_partidos_assembleias.xlsx;ano-partido-UF: lista do partido para deputado estadual ou distrital;2958;2010, 2014, 2018, 2022;353;17;dicionario_bd_partidos_assembleias.xlsx
+bd_partidos_vereanca;bd_partidos_vereanca.csv;ano-partido-município: lista do partido para vereador;228433;2012, 2016, 2020, 2024;330;17;dicionario_bd_partidos_vereanca.xlsx
+bd_distritos_estadual;bd_distritos_estadual.xlsx;ano-UF (eleições gerais);108;2010, 2014, 2018, 2022;126;16;dicionario_bd_distritos_estadual.xlsx
+bd_distritos_municipal;bd_distritos_municipal.xlsx;ano-município (eleições municipais);22271;2012, 2016, 2020, 2024;93;16;dicionario_bd_distritos_municipal.xlsx

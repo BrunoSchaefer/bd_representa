@@ -1,0 +1,98 @@
+---
+title: "8_2 Bens Municipais - validação"
+author: "Bruno Schaefer (IESP-UERJ)"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Objetivo
+
+Comparar o banco `bens_candidatos_municipais.csv` (código 8_2, feito com a basedosdados) com o arquivo de bens declarados do Portal de Dados Abertos do TSE (`bem_candidato`), para uma amostra: **eleição de 2020, Tocantins**.
+
+Mesmo procedimento do 8_1: fator de deflação estimado pela mediana, comparação em valores nominais do patrimônio total, do número de bens e dos imóveis por candidato. Critério: diferença de até 1%, com pelo menos 99% dos candidatos dentro da tolerância.
+
+## Pacotes e amostra
+
+```{r}
+
+library(tidyverse)
+library(openxlsx)
+library(here)
+
+source(here("0 Funções, estrutura e passo-a-passo", "0_funcoes_auxiliares.R"))
+
+ano_amostra <- 2020
+uf_amostra  <- "TO"
+
+arquivo_produzido <- file.path(pasta$prod_candidatos, "bens_candidatos_municipais.csv")
+if (!file.exists(arquivo_produzido)) stop("Rode o código 8_2 antes da validação: ", arquivo_produzido)
+
+```
+
+## Dados
+
+```{r}
+
+produzido <- ler_banco(arquivo_produzido) |>
+  filter(ano == ano_amostra, sigla_uf == uf_amostra) |>
+  mutate(sequencial_candidato = as.character(sequencial_candidato))
+
+tse <- data.table::fread(
+  file.path(pasta$brutos_bens, paste0("bem_candidato_", ano_amostra, "_BRASIL.csv")),
+  sep = ";", encoding = "Latin-1", colClasses = "character",
+  select = c("SG_UF", "SQ_CANDIDATO", "DS_TIPO_BEM_CANDIDATO", "VR_BEM_CANDIDATO")
+) |>
+  as_tibble() |>
+  filter(SG_UF == uf_amostra) |>
+  mutate(valor = converter_valor_tse(VR_BEM_CANDIDATO),
+         tipo  = texto_bd(DS_TIPO_BEM_CANDIDATO))
+
+imoveis <- c("terreno", "casa", "apartamento", "outros bens imoveis", "terra nua",
+             "sala ou conjunto", "predio comercial", "loja", "construcao",
+             "predio residencial", "benfeitorias", "galpao")
+
+tse_cand <- tse |>
+  group_by(sequencial_candidato = SQ_CANDIDATO) |>
+  summarise(n_bens_tse     = n(),
+            patrimonio_tse = sum(valor, na.rm = TRUE),
+            imoveis_tse    = sum(valor[tipo %in% imoveis], na.rm = TRUE),
+            .groups = "drop")
+
+comp <- full_join(
+  select(produzido, sequencial_candidato, n_bens, patrimonio_total, soma_bens_imoveis),
+  tse_cand, by = "sequencial_candidato"
+)
+
+```
+
+## Comparação
+
+```{r}
+
+fator <- comp |>
+  filter(patrimonio_total > 0, patrimonio_tse > 0) |>
+  summarise(fator = median(patrimonio_total / patrimonio_tse)) |>
+  pull(fator)
+
+fator
+
+comparar_valores(
+  comp |> transmute(sequencial_candidato, saida = n_bens, tse = n_bens_tse),
+  "Número de bens por candidato", tolerancia = 0
+) |> head(10)
+
+comparar_valores(
+  comp |> transmute(sequencial_candidato, saida = patrimonio_total / fator, tse = patrimonio_tse),
+  "Patrimônio total por candidato (valores nominais)"
+) |> head(10)
+
+comparar_valores(
+  comp |> transmute(sequencial_candidato, saida = soma_bens_imoveis / fator, tse = imoveis_tse),
+  "Imóveis por candidato (valores nominais)"
+) |> head(10)
+
+```

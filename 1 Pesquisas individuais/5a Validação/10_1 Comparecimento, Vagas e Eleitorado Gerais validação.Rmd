@@ -1,0 +1,83 @@
+---
+title: "10_1 Comparecimento, Vagas e Eleitorado Gerais - validação"
+author: "Bruno Schaefer (IESP-UERJ)"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Objetivo
+
+Comparar o banco `base_uf.xlsx` (código 10_1, feito com a basedosdados) com os arquivos do Portal de Dados Abertos do TSE, para uma amostra: **eleição de 2018**.
+
+1. **Vagas** por UF e cargo, contra `consulta_vagas_2018`.
+2. **Votos nominais** por UF e cargo (1º turno), contra a soma dos votos por candidato em `votacao_candidato_munzona_2018` para o Acre (o arquivo nacional tem 4 GB).
+
+Critério: igualdade exata das vagas; diferença de até 0,5% nos votos.
+
+## Pacotes e amostra
+
+```{r}
+
+library(tidyverse)
+library(openxlsx)
+library(here)
+
+source(here("0 Funções, estrutura e passo-a-passo", "0_funcoes_auxiliares.R"))
+
+ano_amostra <- 2018
+
+produzido <- read.xlsx(file.path(pasta$prod_distritos, "base_uf.xlsx")) |>
+  filter(ano == ano_amostra)
+
+```
+
+## 1. Vagas
+
+```{r}
+
+vagas_tse <- ler_zip_tse(
+  file.path(pasta$brutos_distritos, paste0("consulta_vagas_", ano_amostra, ".zip")),
+  paste0("consulta_vagas_", ano_amostra, "_BRASIL.csv")
+) |>
+  as_tibble() |>
+  filter(CD_TIPO_ELEICAO == "2") |>
+  transmute(sigla_uf = SG_UF, cargo = texto_bd(DS_CARGO), vagas_tse = as.numeric(QT_VAGA))
+
+comparar_valores(
+  full_join(select(produzido, sigla_uf, cargo, vagas),
+            filter(vagas_tse, cargo %in% unique(produzido$cargo)),
+            by = c("sigla_uf", "cargo")) |>
+    transmute(sigla_uf, cargo, saida = vagas, tse = vagas_tse),
+  "Vagas por UF e cargo", tolerancia = 0
+) |> head(10)
+
+```
+
+## 2. Votos nominais (Acre)
+
+```{r}
+
+uf_amostra <- "AC"
+
+votos_tse <- ler_zip_tse(
+  file.path(pasta$brutos_resultados, paste0("votacao_candidato_munzona_", ano_amostra, ".zip")),
+  paste0("votacao_candidato_munzona_", ano_amostra, "_", uf_amostra, ".csv"),
+  select = c("CD_TIPO_ELEICAO", "NR_TURNO", "DS_CARGO", "QT_VOTOS_NOMINAIS_VALIDOS")
+) |>
+  as_tibble() |>
+  filter(NR_TURNO == "1", CD_TIPO_ELEICAO == "2") |>
+  group_by(cargo = texto_bd(DS_CARGO)) |>
+  summarise(votos_nominais_tse = sum(as.numeric(QT_VOTOS_NOMINAIS_VALIDOS)), .groups = "drop")
+
+comparar_valores(
+  inner_join(filter(produzido, sigla_uf == uf_amostra) |> select(cargo, votos_nominais),
+             votos_tse, by = "cargo") |>
+    transmute(cargo, saida = votos_nominais, tse = votos_nominais_tse),
+  "Votos nominais válidos por cargo (Acre, 1º turno)", tolerancia = 0.005
+)
+
+```

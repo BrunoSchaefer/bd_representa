@@ -1,0 +1,739 @@
+---
+title: "2_3 Financiamento Partidário Municipal - Despesas"
+author: "Bruno Schaefer (IESP-UERJ)"
+date: "2026-06-11"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introdução
+
+## Pacotes
+
+```{r pacotes}
+library(here)
+library(data.table)
+library(stringr)
+library(lubridate)
+library(stringi)
+library(openxlsx)
+library(tidyverse)
+
+# Funções auxiliares: leitura robusta dos CSVs do TSE e conversão de valores
+source(here("0 Funções, estrutura e passo-a-passo", "0_funcoes_auxiliares.R"))
+```
+
+## Carregar dados
+
+
+Dados baixados de: https://dadosabertos.tse.jus.br/dataset/prestacao-de-contas-partidarias-2024 (para todos os anos disponíveis)
+
+
+Data 17/01/2026
+
+
+```{r}
+
+# 1) Caminho da pasta (dentro do projeto)
+pasta_despesas <- pasta$brutos_financ_partidario
+
+# 2) Diagnóstico: ver caminho e checar existência
+pasta_despesas
+dir.exists(pasta_despesas)
+
+# 3) Listar tudo que está dentro da pasta
+list.files(pasta_despesas)
+
+# 4) Listar apenas os CSVs de DESPESA (com caminho completo)
+arquivos_despesa <- list.files(
+  path = pasta_despesas,
+  pattern = "(?i)^despesa_anual_\\d{4}_BRASIL\\.csv$",
+  full.names = TRUE
+)
+
+length(arquivos_despesa)
+head(arquivos_despesa)
+
+# 5) Importar e empilhar DESPESAS
+#    Os arquivos do TSE (Latin-1) têm aspas internas não escapadas e quebras
+#    de linha dentro de campos; o readr::read_delim descarta linhas sem erro.
+#    ler_csv_tse() (0_funcoes_auxiliares.R) remonta os registros quebrados e
+#    lê tudo como texto. O ANO vem do nome do arquivo (igual a AA_EXERCICIO).
+despesas <- purrr::map_dfr(
+  arquivos_despesa,
+  \(f){
+    ler_csv_tse(f) %>%
+      as_tibble() %>%
+      mutate(
+        arquivo_origem = basename(f),
+        ANO = as.integer(stringr::str_extract(basename(f), "\\d{4}"))
+      )
+  }
+)
+
+# 6) Conversão das colunas de valor: o TSE usa vírgula decimal e não usa
+#    separador de milhar ("1234,56" → 1234.56)
+despesas <- despesas %>%
+  mutate(
+    across(
+      c(VR_GASTO, VR_PAGAMENTO, VR_DOCUMENTO),
+      converter_valor_tse
+    )
+  )
+
+# 7) Conferência
+glimpse(despesas)
+summary(select(despesas, VR_GASTO, VR_PAGAMENTO, VR_DOCUMENTO))
+table(despesas$ANO, useNA = "ifany")
+
+
+
+```
+
+
+## Limpeza e Categorização dos dados
+
+
+Pensar na categorização das despesas a partir de: https://d1wqtxts1xzle7.cloudfront.net/61744013/Roeder__Karolina_M._Com_que_os_partidos_gastam_seus_recursos_financeiros.SPG20.ANPOCS20200110-53087-j2fkp-libre.pdf?1578694288=&response-content-disposition=inline%3B+filename%3D43o_Encontro_Anual_da_Anpocs_SPG_20_Part.pdf&Expires=1781145004&Signature=MGGhoUWzeIq~R7uHStm7cZ9FPgnBf5D-vds3xSHNkA~pH-0SLWYsV8NpSmDit-lFtMcv2Wg8IsQHwy2-6HA~wMcPETekEToDoRJWoZ8~z3JyHKaEjJdQnbwgonjcyBXdIHYdBW3Mr6M0WQy0MZWsVW2gUUx-4PJg9rHwV36AixVlpiHfFAJx7fcxBdMGP6HyQhKRRQO8eFj~h3kPls8fbNPEXrnotCUQIM3VMeb-7LOw5RlTyRKKnB9ZUwv4Bmd8utanX0IBW9cEz5Z1CA9xq4a-QZ9Vqk28yo2Pi-C408RoysujpjdD0-70Vyv0Wz3SKe3PR-MHAhNqscmTOiJFVw__&Key-Pair-Id=APKAJLOHF5GGSLRBV4ZA
+
+Roeder, Karolina Mattos. "Com que os partidos gastam seus recursos financeiros? Uma proposta de tipologia de gastos partidários." ENCONTRO ANUAL 43 (2019): 24.
+
+
+
+```{r}
+
+## Limpeza dos dados -------------------------------------------------------
+
+table(despesas$DS_TP_ESFERA_PARTIDARIA)
+
+# manter apenas municipal e zonal (DF)
+# As direções zonais do DF não têm código de município (CD_MUNICIPIO = -1) e
+# são identificadas pelo número da zona. O número da zona é usado como código
+# da unidade, como no banco de dirigentes (código 1_3), onde as direções
+# zonais têm CD_MUNICIPIO igual ao número da zona.
+dados_despesas <- despesas %>%
+  filter(DS_TP_ESFERA_PARTIDARIA %in% c("Municipal", "Zonal")) %>%
+  mutate(
+    CD_MUNICIPIO = if_else(DS_TP_ESFERA_PARTIDARIA == "Zonal", NR_ZONA, CD_MUNICIPIO),
+    NM_MUNICIPIO = if_else(DS_TP_ESFERA_PARTIDARIA == "Zonal",
+                           paste0(NR_ZONA, ". ZONA ELEITORAL"), NM_MUNICIPIO)
+  )
+
+# sufixo de finalidade + marcador mulheres
+dados_despesas <- dados_despesas %>%
+  mutate(
+
+    despesa_mulheres = if_else(
+      str_detect(DS_GASTO, regex("MULHER|CANDIDATAS NEGRAS", ignore_case = TRUE)),
+      1L, 0L
+    ),
+
+    sufixo = case_when(
+      str_detect(DS_GASTO, regex("- DESPESAS ELEITORAIS$|ELEITORAIS$|ELEITOR(AIS|AL)$",
+                                  ignore_case = TRUE)) ~ "eleitoral",
+      str_detect(DS_GASTO, regex("- MULHERES$|MULHERES$",
+                                  ignore_case = TRUE)) ~ "mulheres",
+      str_detect(DS_GASTO, regex("- ORDINÁRIAS$|ORDINÁRIAS$|FUNDAÇÃO PARTIDÁRIA$",
+                                  ignore_case = TRUE)) ~ "ordinaria",
+      TRUE ~ "outro"
+    ),
+
+    # ------------------------------------------------------------------
+    # NÍVEL 1 — categoria descritiva (fiel ao Plano de Contas TSE)
+    # ------------------------------------------------------------------
+    categoria_descritiva = case_when(
+
+      # Pessoal e encargos
+      str_detect(DS_GASTO, regex("^PESSOAL", ignore_case = TRUE))
+        ~ "pessoal",
+
+      # Transportes e viagens
+      str_detect(DS_GASTO, regex("^TRANSPORTES E VIAGENS", ignore_case = TRUE))
+        ~ "transportes_viagens",
+
+      # Aluguéis e condomínios
+      str_detect(DS_GASTO, regex("^ALUGUÉIS E CONDOMÍNIOS", ignore_case = TRUE))
+        ~ "alugueis_condominios",
+
+      # Energia elétrica
+      str_detect(DS_GASTO, regex("^ENERGIA ELÉTRICA", ignore_case = TRUE))
+        ~ "energia_eletrica",
+
+      # Água e esgoto
+      str_detect(DS_GASTO, regex("^ÁGUA E ESGOTO", ignore_case = TRUE))
+        ~ "agua_esgoto",
+
+      # Telecomunicações e internet
+      str_detect(DS_GASTO, regex("^TELECOMUNICAÇÕES E INTERNET", ignore_case = TRUE))
+        ~ "telecomunicacoes_internet",
+
+      # Segurança e vigilância
+      str_detect(DS_GASTO, regex("^SEGURANÇA E VIGILÂNCIA", ignore_case = TRUE))
+        ~ "seguranca_vigilancia",
+
+      # Serviços de limpeza
+      str_detect(DS_GASTO, regex("^SERVIÇOS DE LIMPEZA", ignore_case = TRUE))
+        ~ "servicos_limpeza",
+
+      # Manutenção, conservação e reparos
+      str_detect(DS_GASTO, regex("^MANUTENÇÃO, CONSERVAÇÃO E REPAROS", ignore_case = TRUE))
+        ~ "manutencao_reparos",
+
+      # Ativo permanente e benfeitorias
+      str_detect(DS_GASTO, regex("^ATIVO PERMANENTE|^BENFEITORIAS", ignore_case = TRUE))
+        ~ "ativo_permanente",
+
+      # Material de consumo
+      str_detect(DS_GASTO, regex("^MATERIAL DE CONSUMO", ignore_case = TRUE))
+        ~ "material_consumo",
+
+      # Serviços técnico-profissionais
+      str_detect(DS_GASTO, regex("^SERVIÇOS TÉCNICO-PROFISSIONAIS", ignore_case = TRUE))
+        ~ "servicos_tecnicos_profissionais",
+
+      # Serviços postais
+      str_detect(DS_GASTO, regex("^SERVIÇOS POSTAIS", ignore_case = TRUE))
+        ~ "servicos_postais",
+
+      # Serviços cartorários
+      str_detect(DS_GASTO, regex("^SERVIÇOS CARTORÁRIOS", ignore_case = TRUE))
+        ~ "servicos_cartorarios",
+
+      # Assinaturas e periódicos
+      str_detect(DS_GASTO, regex("^ASSINATURAS E AQUISIÇÕES DE PERIÓDICOS", ignore_case = TRUE))
+        ~ "assinaturas_periodicos",
+
+      # Cópias e encadernações
+      str_detect(DS_GASTO, regex("^CÓPIAS, ENCADERNAÇÕES", ignore_case = TRUE))
+        ~ "copias_encadernacoes",
+
+      # Lanches e refeições
+      str_detect(DS_GASTO, regex("^LANCHES E REFEIÇÕES", ignore_case = TRUE))
+        ~ "lanches_refeicoes",
+
+      # Seguros
+      str_detect(DS_GASTO, regex("^SEGUROS", ignore_case = TRUE))
+        ~ "seguros",
+
+      # Tributos e taxas
+      str_detect(DS_GASTO, regex("^TRIBUTOS", ignore_case = TRUE))
+        ~ "tributos_taxas",
+
+      # Propaganda e publicidade
+      str_detect(DS_GASTO, regex("^PROPAGANDA E PUBLICIDADE", ignore_case = TRUE))
+        ~ "propaganda_publicidade",
+
+      # Rádio e televisão
+      str_detect(DS_GASTO, regex("^RÁDIO E TELEVISÃO", ignore_case = TRUE))
+        ~ "radio_televisao",
+
+      # Produção de audiovisuais
+      str_detect(DS_GASTO, regex("^PRODUÇÃO DE AUDIOVISUAIS", ignore_case = TRUE))
+        ~ "producao_audiovisuais",
+
+      # Impulsionamento institucional (redes sociais — ordinário)
+      str_detect(DS_GASTO, regex("IMPULSIONAMENTO INSTITUCIONAL", ignore_case = TRUE))
+        ~ "impulsionamento_institucional",
+
+      # Páginas institucionais na internet (ordinário)
+      str_detect(DS_GASTO, regex("CRIAÇÃO E INCLUSÃO DE PÁGINAS INSTITUCIONAIS", ignore_case = TRUE))
+        ~ "paginas_institucionais",
+
+      # Publicações
+      str_detect(DS_GASTO, regex("^PUBLICAÇÕES", ignore_case = TRUE))
+        ~ "publicacoes",
+
+      # Materiais para comercialização / distribuição
+      str_detect(DS_GASTO, regex("MATERIAIS PARA COMERCIALIZAÇÃO|OUTROS MATERIAIS PARA COMERCIALIZAÇÃO",
+                                  ignore_case = TRUE))
+        ~ "materiais_distribuicao",
+
+      # Propaganda doutrinária e política
+      str_detect(DS_GASTO, regex("PROPAGANDA DOUTRINÁRIA E POLÍTICA|OUTRAS DESPESAS COM PROPAGANDA DOUTRINÁRIA",
+                                  ignore_case = TRUE))
+        ~ "propaganda_doutrinaria",
+
+      # Alistamento
+      str_detect(DS_GASTO, regex("^ALISTAMENTO|^DESPESAS COM ALISTAMENTO", ignore_case = TRUE))
+        ~ "alistamento",
+
+      # Fundação partidária / instituto de pesquisa política
+      str_detect(DS_GASTO, regex("FUNDAÇÃO DE PESQUISA|INSTITUTO.*POLÍTICA", ignore_case = TRUE))
+        ~ "fundacao_instituto",
+
+      # Pesquisas de opinião pública
+      str_detect(DS_GASTO, regex("^PESQUISAS E TESTES DE OPINIÃO", ignore_case = TRUE))
+        ~ "pesquisas_opiniao",
+
+      # Eventos promocionais
+      str_detect(DS_GASTO, regex("^EVENTOS PROMOCIONAIS|DESPESAS COM EVENTOS DE PROMOÇÃO DE CANDIDATURAS",
+                                  ignore_case = TRUE))
+        ~ "eventos_promocionais",
+
+      # Comícios e militância de rua
+      str_detect(DS_GASTO, regex("COMÍCIOS E MILITÂNCIA DE RUA", ignore_case = TRUE))
+        ~ "comicios_militancia",
+
+      # Convenções
+      str_detect(DS_GASTO, regex("^CONVENÇÕES|^DESPESAS COM CONVENÇÕES", ignore_case = TRUE))
+        ~ "convencoes",
+
+      # Seminários e congressos
+      str_detect(DS_GASTO, regex("^SEMINÁRIOS|^CONGRESSOS", ignore_case = TRUE))
+        ~ "seminarios_congressos",
+
+      # Despesas eleitorais diversas
+      str_detect(DS_GASTO, regex(paste0(
+        "PUBLICIDADE POR ADESIVOS|PUBLICIDADE POR CARROS DE SOM|",
+        "PUBLICIDADE POR MATERIAIS IMPRESSOS|PRODUÇÃO DE JINGLES|",
+        "IMPULSIONAMENTO DE CONTEÚDOS|",
+        "CRIAÇÃO E INCLUSÃO DE PÁGINAS NA INTERNET|",
+        "LOCAÇÃO DE BENS MÓVEIS.*ELEITORAIS|LOCAÇÃO DE VEÍCULOS.*ELEITORAIS|",
+        "GERADORES DE ENERGIA|REEMBOLSO DE GASTOS REALIZADOS POR ELEITORES|",
+        "INSTALAÇÃO DE COMITÊS|",
+        "OUTRAS DESPESAS DE CAMPANHA|^OUTROS DESPESAS ELEITORAIS"),
+        ignore_case = TRUE))
+        ~ "despesas_eleitorais_diversas",
+
+      # Assunção de dívidas de campanha
+      str_detect(DS_GASTO, regex("^ASSUNÇÃO DE DÍVIDAS DE CAMPANHA", ignore_case = TRUE))
+        ~ "assuncao_dividas_campanha",
+
+      # ── TRANSFERÊNCIAS — desagregadas por fonte e finalidade ──────
+      str_detect(DS_GASTO, regex(
+        "TRANSFERÊNCIAS FINANCEIRAS EFETUADAS - FUNDO ESPECIAL DE FINANCIAMENTO DE CAMPANHA",
+        ignore_case = TRUE))
+        ~ "transferencia_fefc",
+
+      str_detect(DS_GASTO, regex(
+        "TRANSFERÊNCIAS FINANCEIRAS EFETUADAS - FUNDO PARTIDÁRIO",
+        ignore_case = TRUE))
+        ~ "transferencia_fundo_partidario",
+
+      str_detect(DS_GASTO, regex(
+        "TRANSFERÊNCIAS FINANCEIRAS EFETUADAS - OUTROS RECURSOS",
+        ignore_case = TRUE))
+        ~ "transferencia_outros_recursos",
+
+      str_detect(DS_GASTO, regex(
+        "^TRANSFERÊNCIAS EFETUADAS - RECURSOS (FINANCEIROS|ESTIMÁVEIS)",
+        ignore_case = TRUE))
+        ~ "transferencia_recursos_estimaveis",
+
+      str_detect(DS_GASTO, regex(
+        "^TRANSFERENCIAS INTRAPARTIDÁRIAS",
+        ignore_case = TRUE))
+        ~ "transferencia_intrapartidaria",
+
+      str_detect(DS_GASTO, regex("^ASSUNÇÃO DE OBRIGAÇÕES|^TRANSFERÊNCIAS EFETUADAS - ASSUNÇÃO DE OBRIGAÇÕES",
+                                  ignore_case = TRUE))
+        ~ "assuncao_obrigacoes",
+
+      # Despesas financeiras
+      str_detect(DS_GASTO, regex("^DESPESAS FINANCEIRAS", ignore_case = TRUE))
+        ~ "despesas_financeiras",
+
+      # Despesas judiciais
+      str_detect(DS_GASTO, regex("^DESPESAS JUDICIAIS", ignore_case = TRUE))
+        ~ "despesas_judiciais",
+
+      # Recolhimentos ao erário
+      str_detect(DS_GASTO, regex("^RECOLHIMENTOS AO ERÁRIO", ignore_case = TRUE))
+        ~ "recolhimentos_erario",
+
+      # Adiantamentos diversos
+      str_detect(DS_GASTO, regex("^ADIANTAMENTOS DIVERSOS", ignore_case = TRUE))
+        ~ "adiantamentos",
+
+      # Obrigações diversas (passivo)
+      str_detect(DS_GASTO, regex("^OBRIGAÇÕES DIVERSAS", ignore_case = TRUE))
+        ~ "obrigacoes_diversas",
+
+      # Depósitos judiciais e extrajudiciais
+      str_detect(DS_GASTO, regex("DEPÓSITOS RESTITUÍVEIS|RECUPERAÇÃO DE DEPÓSITOS",
+                                  ignore_case = TRUE))
+        ~ "depositos",
+
+      # Mensalidades a organismos internacionais
+      str_detect(DS_GASTO, regex("MENSALIDADES.*ORGANISMOS PARTIDÁRIOS INTERNACIONAIS",
+                                  ignore_case = TRUE))
+        ~ "mensalidades_internacionais",
+
+      # Outras despesas gerais
+      str_detect(DS_GASTO, regex(paste0(
+        "^OUTRAS DESPESAS GERAIS|^OUTROS ORDINÁRIAS|^OUTROS MULHERES|",
+        "^OUTRAS DESPESAS PARA PARTICIPAÇÃO DA MULHER"),
+        ignore_case = TRUE))
+        ~ "outras_despesas_gerais",
+
+      # Perdas, receitas devolvidas, registros contábeis diversos
+      str_detect(DS_GASTO, regex(paste0(
+        "^PERDAS COM ATIVOS|^RECEITAS DEVOLVIDAS|",
+        "^RECURSOS DE ORIGEM NÃO IDENTIFICADA|",
+        "^OUTRAS RECEITAS|^CONTRIBUIÇÕES"),
+        ignore_case = TRUE))
+        ~ "registros_contabeis_diversos",
+
+      TRUE ~ "nao_classificado"
+    ),
+
+    # ------------------------------------------------------------------
+    # NÍVEL 2 — tipologia Roeder (aparato × eleições)
+    # ------------------------------------------------------------------
+    tipo_roeder = case_when(
+
+      # ── PESSOAL (aparato) ──────────────────────────────────────────
+      categoria_descritiva == "pessoal"
+        ~ "pessoal",
+
+      # ── SEDES (aparato) ────────────────────────────────────────────
+      categoria_descritiva %in% c(
+        "alugueis_condominios",
+        "energia_eletrica",
+        "agua_esgoto",
+        "telecomunicacoes_internet",
+        "seguranca_vigilancia",
+        "servicos_limpeza",
+        "manutencao_reparos",
+        "ativo_permanente",
+        "material_consumo",
+        "servicos_tecnicos_profissionais",
+        "servicos_postais",
+        "servicos_cartorarios",
+        "assinaturas_periodicos",
+        "copias_encadernacoes",
+        "lanches_refeicoes",
+        "seguros",
+        "tributos_taxas",
+        "mensalidades_internacionais",
+        "outras_despesas_gerais"
+      ) ~ "sedes",
+
+      # ── POLÍTICA (aparato) ─────────────────────────────────────────
+      categoria_descritiva %in% c(
+        "transportes_viagens",
+        "propaganda_doutrinaria",
+        "alistamento",
+        "fundacao_instituto",
+        "pesquisas_opiniao",
+        "seminarios_congressos",
+        "convencoes",
+        "eventos_promocionais"
+      ) ~ "politica",
+
+      # ── COMUNICAÇÃO (eleições) ─────────────────────────────────────
+      categoria_descritiva %in% c(
+        "impulsionamento_institucional",
+        "paginas_institucionais",
+        "publicacoes",
+        "materiais_distribuicao",
+        "comicios_militancia",
+        "despesas_eleitorais_diversas",
+        "assuncao_dividas_campanha"
+      ) ~ "comunicacao",
+
+      # ── PUBLICIDADE (eleições) ─────────────────────────────────────
+      categoria_descritiva %in% c(
+        "propaganda_publicidade",
+        "radio_televisao",
+        "producao_audiovisuais"
+      ) ~ "publicidade",
+
+      # ── TRANSFERÊNCIAS (fora da tipologia) ────────────────────────
+      categoria_descritiva %in% c(
+        "transferencia_fefc",
+        "transferencia_fundo_partidario",
+        "transferencia_outros_recursos",
+        "transferencia_recursos_estimaveis",
+        "transferencia_intrapartidaria",
+        "assuncao_obrigacoes"
+      ) ~ "transferencias",
+
+      # ── FINANCEIRO-CONTÁBIL (fora da tipologia) ───────────────────
+      categoria_descritiva %in% c(
+        "despesas_financeiras",
+        "despesas_judiciais",
+        "recolhimentos_erario",
+        "adiantamentos",
+        "obrigacoes_diversas",
+        "depositos",
+        "registros_contabeis_diversos"
+      ) ~ "financeiro_contabil",
+
+      TRUE ~ "nao_classificado"
+    ),
+
+    # ------------------------------------------------------------------
+    # NÍVEL 3 — dimensão agregada (para análise comparativa)
+    # ------------------------------------------------------------------
+    dimensao_roeder = case_when(
+      tipo_roeder %in% c("pessoal", "sedes", "politica") ~ "aparato",
+      tipo_roeder %in% c("comunicacao", "publicidade")   ~ "eleicoes",
+      tipo_roeder == "transferencias"                     ~ "transferencias",
+      tipo_roeder == "financeiro_contabil"                ~ "financeiro_contabil",
+      TRUE                                                ~ NA_character_
+    ),
+
+    # sufixo de finalidade das transferências (ordinária vs eleitoral)
+    transferencia_finalidade = case_when(
+      tipo_roeder == "transferencias" & sufixo == "eleitoral"  ~ "eleitoral",
+      tipo_roeder == "transferencias" & sufixo == "ordinaria"  ~ "ordinaria",
+      tipo_roeder == "transferencias" & sufixo == "mulheres"   ~ "mulheres",
+      tipo_roeder == "transferencias"                          ~ "outro",
+      TRUE                                                     ~ NA_character_
+    )
+  )
+
+# Conferência
+table(dados_despesas$categoria_descritiva,      useNA = "ifany")
+table(dados_despesas$tipo_roeder,               useNA = "ifany")
+table(dados_despesas$dimensao_roeder,           useNA = "ifany")
+table(dados_despesas$transferencia_finalidade,  useNA = "ifany")
+
+# Checar o que ficou não classificado
+dados_despesas %>%
+  filter(tipo_roeder == "nao_classificado") %>%
+  count(DS_GASTO, sort = TRUE)
+
+
+```
+
+
+## Atualizar valores pela inflação
+
+```{r}
+
+### Converter valores inflação --------------------------------------------
+
+
+library(deflateBR)
+
+# Organiza os dados 
+
+names(dados_despesas)
+
+summary(dados_despesas)
+
+
+dados_despesas <- dados_despesas %>%
+  
+  # Deflaciona variaveis pelo IPCA de 12/2025
+  mutate(across(c(VR_GASTO),
+                ~ ipca(.x, as.Date(paste0(ANO, "-12-31")), "12/2025")))
+
+options(scipen = 99)
+
+
+
+```
+
+
+## Tidy Data
+
+
+```{r}
+
+### Atualizar bancos de dados de financiamento ----------------------------
+
+names(dados_despesas)
+table(dados_despesas$categoria_descritiva)
+table(dados_despesas$tipo_roeder)
+table(dados_despesas$dimensao_roeder)
+
+banco_despesas <- dados_despesas %>%
+  group_by(
+    ANO,
+    DS_TP_ESFERA_PARTIDARIA,
+    SG_UF,
+    SG_PARTIDO,
+    NM_PARTIDO,
+    CD_MUNICIPIO,
+    NM_MUNICIPIO
+  ) %>%
+  summarise(
+
+    # ------------------------------------------------------------------
+    # TOTAIS GERAIS
+    # ------------------------------------------------------------------
+
+    # total bruto (tudo, inclusive transferências e financeiro-contábil)
+    valor_total_bruto = sum(VR_GASTO, na.rm = TRUE),
+
+    # total tipologia (exclui transferências e financeiro-contábil —
+    # denominador correto para os percentuais de Roeder)
+    valor_total_tipologia = sum(
+      VR_GASTO[dimensao_roeder %in% c("aparato", "eleicoes")],
+      na.rm = TRUE
+    ),
+
+    # marcador transversal mulheres
+    valor_mulheres = sum(VR_GASTO[despesa_mulheres == 1], na.rm = TRUE),
+
+    # ------------------------------------------------------------------
+    # NÍVEL DESCRITIVO — categorias do Plano de Contas TSE
+    # ------------------------------------------------------------------
+
+    # · Pessoal
+    valor_pessoal                    = sum(VR_GASTO[categoria_descritiva == "pessoal"],                        na.rm = TRUE),
+
+    # · Transportes e viagens
+    valor_transportes_viagens        = sum(VR_GASTO[categoria_descritiva == "transportes_viagens"],            na.rm = TRUE),
+
+    # · Estrutura física
+    valor_alugueis_condominios       = sum(VR_GASTO[categoria_descritiva == "alugueis_condominios"],           na.rm = TRUE),
+    valor_energia_eletrica           = sum(VR_GASTO[categoria_descritiva == "energia_eletrica"],               na.rm = TRUE),
+    valor_agua_esgoto                = sum(VR_GASTO[categoria_descritiva == "agua_esgoto"],                    na.rm = TRUE),
+    valor_telecomunicacoes_internet  = sum(VR_GASTO[categoria_descritiva == "telecomunicacoes_internet"],      na.rm = TRUE),
+    valor_seguranca_vigilancia       = sum(VR_GASTO[categoria_descritiva == "seguranca_vigilancia"],           na.rm = TRUE),
+    valor_servicos_limpeza           = sum(VR_GASTO[categoria_descritiva == "servicos_limpeza"],               na.rm = TRUE),
+    valor_manutencao_reparos         = sum(VR_GASTO[categoria_descritiva == "manutencao_reparos"],             na.rm = TRUE),
+    valor_ativo_permanente           = sum(VR_GASTO[categoria_descritiva == "ativo_permanente"],               na.rm = TRUE),
+
+    # · Materiais e serviços de apoio
+    valor_material_consumo           = sum(VR_GASTO[categoria_descritiva == "material_consumo"],               na.rm = TRUE),
+    valor_servicos_tecnicos          = sum(VR_GASTO[categoria_descritiva == "servicos_tecnicos_profissionais"],na.rm = TRUE),
+    valor_servicos_postais           = sum(VR_GASTO[categoria_descritiva == "servicos_postais"],               na.rm = TRUE),
+    valor_servicos_cartorarios       = sum(VR_GASTO[categoria_descritiva == "servicos_cartorarios"],           na.rm = TRUE),
+    valor_assinaturas_periodicos     = sum(VR_GASTO[categoria_descritiva == "assinaturas_periodicos"],         na.rm = TRUE),
+    valor_copias_encadernacoes       = sum(VR_GASTO[categoria_descritiva == "copias_encadernacoes"],           na.rm = TRUE),
+    valor_lanches_refeicoes          = sum(VR_GASTO[categoria_descritiva == "lanches_refeicoes"],              na.rm = TRUE),
+    valor_seguros                    = sum(VR_GASTO[categoria_descritiva == "seguros"],                        na.rm = TRUE),
+    valor_tributos_taxas             = sum(VR_GASTO[categoria_descritiva == "tributos_taxas"],                 na.rm = TRUE),
+    valor_mensalidades_internacionais= sum(VR_GASTO[categoria_descritiva == "mensalidades_internacionais"],    na.rm = TRUE),
+    valor_outras_despesas_gerais     = sum(VR_GASTO[categoria_descritiva == "outras_despesas_gerais"],         na.rm = TRUE),
+
+    # · Atividade política
+    valor_propaganda_doutrinaria     = sum(VR_GASTO[categoria_descritiva == "propaganda_doutrinaria"],         na.rm = TRUE),
+    valor_alistamento                = sum(VR_GASTO[categoria_descritiva == "alistamento"],                    na.rm = TRUE),
+    valor_fundacao_instituto         = sum(VR_GASTO[categoria_descritiva == "fundacao_instituto"],             na.rm = TRUE),
+    valor_pesquisas_opiniao          = sum(VR_GASTO[categoria_descritiva == "pesquisas_opiniao"],              na.rm = TRUE),
+    valor_seminarios_congressos      = sum(VR_GASTO[categoria_descritiva == "seminarios_congressos"],          na.rm = TRUE),
+    valor_convencoes                 = sum(VR_GASTO[categoria_descritiva == "convencoes"],                     na.rm = TRUE),
+    valor_eventos_promocionais       = sum(VR_GASTO[categoria_descritiva == "eventos_promocionais"],           na.rm = TRUE),
+
+    # · Comunicação e publicidade
+    valor_propaganda_publicidade     = sum(VR_GASTO[categoria_descritiva == "propaganda_publicidade"],         na.rm = TRUE),
+    valor_radio_televisao            = sum(VR_GASTO[categoria_descritiva == "radio_televisao"],                na.rm = TRUE),
+    valor_producao_audiovisuais      = sum(VR_GASTO[categoria_descritiva == "producao_audiovisuais"],          na.rm = TRUE),
+    valor_impulsionamento_inst       = sum(VR_GASTO[categoria_descritiva == "impulsionamento_institucional"],  na.rm = TRUE),
+    valor_paginas_institucionais     = sum(VR_GASTO[categoria_descritiva == "paginas_institucionais"],         na.rm = TRUE),
+    valor_publicacoes                = sum(VR_GASTO[categoria_descritiva == "publicacoes"],                    na.rm = TRUE),
+    valor_materiais_distribuicao     = sum(VR_GASTO[categoria_descritiva == "materiais_distribuicao"],         na.rm = TRUE),
+    valor_comicios_militancia        = sum(VR_GASTO[categoria_descritiva == "comicios_militancia"],            na.rm = TRUE),
+    valor_despesas_eleitorais_div    = sum(VR_GASTO[categoria_descritiva == "despesas_eleitorais_diversas"],   na.rm = TRUE),
+    valor_assuncao_dividas_campanha  = sum(VR_GASTO[categoria_descritiva == "assuncao_dividas_campanha"],      na.rm = TRUE),
+
+    # · Transferências — por fonte
+    valor_transfer_fefc              = sum(VR_GASTO[categoria_descritiva == "transferencia_fefc"],             na.rm = TRUE),
+    valor_transfer_fundo_partidario  = sum(VR_GASTO[categoria_descritiva == "transferencia_fundo_partidario"], na.rm = TRUE),
+    valor_transfer_outros_recursos   = sum(VR_GASTO[categoria_descritiva == "transferencia_outros_recursos"],  na.rm = TRUE),
+    valor_transfer_estimaveis        = sum(VR_GASTO[categoria_descritiva == "transferencia_recursos_estimaveis"], na.rm = TRUE),
+    valor_transfer_intrapartidaria   = sum(VR_GASTO[categoria_descritiva == "transferencia_intrapartidaria"],  na.rm = TRUE),
+    valor_assuncao_obrigacoes        = sum(VR_GASTO[categoria_descritiva == "assuncao_obrigacoes"],            na.rm = TRUE),
+
+    # · Transferências — por finalidade (ordinária vs eleitoral)
+    valor_transfer_ordinaria         = sum(VR_GASTO[tipo_roeder == "transferencias" & transferencia_finalidade == "ordinaria"],  na.rm = TRUE),
+    valor_transfer_eleitoral         = sum(VR_GASTO[tipo_roeder == "transferencias" & transferencia_finalidade == "eleitoral"],  na.rm = TRUE),
+    valor_transfer_mulheres          = sum(VR_GASTO[tipo_roeder == "transferencias" & transferencia_finalidade == "mulheres"],   na.rm = TRUE),
+
+    # · Financeiro-contábil
+    valor_despesas_financeiras       = sum(VR_GASTO[categoria_descritiva == "despesas_financeiras"],           na.rm = TRUE),
+    valor_despesas_judiciais         = sum(VR_GASTO[categoria_descritiva == "despesas_judiciais"],             na.rm = TRUE),
+    valor_recolhimentos_erario       = sum(VR_GASTO[categoria_descritiva == "recolhimentos_erario"],           na.rm = TRUE),
+    valor_adiantamentos              = sum(VR_GASTO[categoria_descritiva == "adiantamentos"],                  na.rm = TRUE),
+    valor_obrigacoes_diversas        = sum(VR_GASTO[categoria_descritiva == "obrigacoes_diversas"],            na.rm = TRUE),
+    valor_depositos                  = sum(VR_GASTO[categoria_descritiva == "depositos"],                      na.rm = TRUE),
+
+    # · Não classificado
+    valor_nao_classificado           = sum(VR_GASTO[tipo_roeder == "nao_classificado"],                        na.rm = TRUE),
+
+    # ------------------------------------------------------------------
+    # NÍVEL TIPOLÓGICO — Roeder (valores agregados)
+    # ------------------------------------------------------------------
+
+    # · Aparato
+    valor_aparato                    = sum(VR_GASTO[dimensao_roeder == "aparato"],   na.rm = TRUE),
+    valor_aparato_pessoal            = sum(VR_GASTO[tipo_roeder == "pessoal"],       na.rm = TRUE),
+    valor_aparato_sedes              = sum(VR_GASTO[tipo_roeder == "sedes"],         na.rm = TRUE),
+    valor_aparato_politica           = sum(VR_GASTO[tipo_roeder == "politica"],      na.rm = TRUE),
+
+    # · Eleições
+    valor_eleicoes                   = sum(VR_GASTO[dimensao_roeder == "eleicoes"],  na.rm = TRUE),
+    valor_eleicoes_comunicacao       = sum(VR_GASTO[tipo_roeder == "comunicacao"],   na.rm = TRUE),
+    valor_eleicoes_publicidade       = sum(VR_GASTO[tipo_roeder == "publicidade"],   na.rm = TRUE),
+
+    # · Transferências (total)
+    valor_transferencias             = sum(VR_GASTO[dimensao_roeder == "transferencias"],       na.rm = TRUE),
+
+    # · Financeiro-contábil (total)
+    valor_financeiro_contabil        = sum(VR_GASTO[dimensao_roeder == "financeiro_contabil"],  na.rm = TRUE),
+
+    .groups = "drop"
+
+  ) %>%
+
+  # ------------------------------------------------------------------
+  # PERCENTUAIS
+  # ------------------------------------------------------------------
+  mutate(
+
+    # · Mulheres sobre total bruto
+    pct_mulheres                  = (valor_mulheres             / valor_total_bruto)      * 100,
+
+    # · Tipologia sobre total tipologia (denominador correto)
+    pct_aparato                   = (valor_aparato              / valor_total_tipologia)  * 100,
+    pct_aparato_pessoal           = (valor_aparato_pessoal      / valor_total_tipologia)  * 100,
+    pct_aparato_sedes             = (valor_aparato_sedes        / valor_total_tipologia)  * 100,
+    pct_aparato_politica          = (valor_aparato_politica     / valor_total_tipologia)  * 100,
+
+    pct_eleicoes                  = (valor_eleicoes             / valor_total_tipologia)  * 100,
+    pct_eleicoes_comunicacao      = (valor_eleicoes_comunicacao / valor_total_tipologia)  * 100,
+    pct_eleicoes_publicidade      = (valor_eleicoes_publicidade / valor_total_tipologia)  * 100,
+
+    # · Transferências e financeiro sobre total bruto
+    pct_transferencias            = (valor_transferencias       / valor_total_bruto)      * 100,
+    pct_transfer_ordinaria        = (valor_transfer_ordinaria   / valor_transferencias)   * 100,
+    pct_transfer_eleitoral        = (valor_transfer_eleitoral   / valor_transferencias)   * 100,
+    pct_transfer_mulheres         = (valor_transfer_mulheres    / valor_transferencias)   * 100,
+    pct_financeiro_contabil       = (valor_financeiro_contabil  / valor_total_bruto)      * 100,
+
+    # · Checagem: aparato + eleições deve somar 100 sobre tipologia
+    check_soma_tipologia          = pct_aparato + pct_eleicoes
+
+  )
+
+
+summary(banco_despesas)
+
+
+```
+
+
+## Salvar banco de dados
+
+```{r}
+
+
+### Salvar bancos de dados
+
+library(openxlsx)
+
+# pasta de saída
+pasta_saida <- pasta$prod_financ_partidario
+
+
+write.xlsx(
+  banco_despesas,
+  file = file.path(pasta_saida, "banco_despesas_municipal.xlsx"),
+  overwrite = TRUE
+)
+
+
+```
+
+
+
+

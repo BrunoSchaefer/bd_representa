@@ -1,0 +1,84 @@
+---
+title: "10_2 Comparecimento, Vagas e Eleitorado Municipais - validação"
+author: "Bruno Schaefer (IESP-UERJ)"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Objetivo
+
+Comparar o banco `base_mun.rds` (código 10_2, feito com a basedosdados) com os arquivos do Portal de Dados Abertos do TSE, para uma amostra: **eleição de 2016**.
+
+1. **Vagas** por município e cargo (todo o Brasil), contra `consulta_vagas_2016`.
+2. **Votos nominais** por município e cargo (1º turno), contra a soma dos votos por candidato em `votacao_candidato_munzona_2016` para o Acre.
+
+Critério: igualdade exata das vagas em pelo menos 99% dos municípios; diferença de até 0,5% nos votos.
+
+## Pacotes e amostra
+
+```{r}
+
+library(tidyverse)
+library(here)
+
+source(here("0 Funções, estrutura e passo-a-passo", "0_funcoes_auxiliares.R"))
+
+ano_amostra <- 2016
+
+produzido <- readRDS(file.path(pasta$prod_distritos, "base_mun.rds")) |>
+  filter(ano == ano_amostra) |>
+  mutate(id_municipio_tse = as.integer(id_municipio_tse))
+
+```
+
+## 1. Vagas
+
+```{r}
+
+vagas_tse <- ler_zip_tse(
+  file.path(pasta$brutos_distritos, paste0("consulta_vagas_", ano_amostra, ".zip")),
+  paste0("consulta_vagas_", ano_amostra, "_BRASIL.csv")
+) |>
+  as_tibble() |>
+  filter(CD_TIPO_ELEICAO == "2") |>
+  transmute(id_municipio_tse = as.integer(SG_UE), cargo = texto_bd(DS_CARGO),
+            vagas_tse = as.numeric(QT_VAGAS)) |>
+  filter(cargo %in% c("prefeito", "vereador"))
+
+comparar_valores(
+  full_join(select(produzido, id_municipio_tse, cargo, vagas), vagas_tse,
+            by = c("id_municipio_tse", "cargo")) |>
+    transmute(id_municipio_tse, cargo, saida = vagas, tse = vagas_tse),
+  "Vagas por município e cargo", tolerancia = 0
+) |> head(10)
+
+```
+
+## 2. Votos nominais (Acre)
+
+```{r}
+
+uf_amostra <- "AC"
+
+votos_tse <- ler_zip_tse(
+  file.path(pasta$brutos_resultados, paste0("votacao_candidato_munzona_", ano_amostra, ".zip")),
+  paste0("votacao_candidato_munzona_", ano_amostra, "_", uf_amostra, ".csv"),
+  select = c("CD_TIPO_ELEICAO", "NR_TURNO", "SG_UE", "DS_CARGO", "QT_VOTOS_NOMINAIS_VALIDOS")
+) |>
+  as_tibble() |>
+  filter(NR_TURNO == "1", CD_TIPO_ELEICAO == "2") |>
+  group_by(id_municipio_tse = as.integer(SG_UE), cargo = texto_bd(DS_CARGO)) |>
+  summarise(votos_nominais_tse = sum(as.numeric(QT_VOTOS_NOMINAIS_VALIDOS)), .groups = "drop")
+
+comparar_valores(
+  inner_join(filter(produzido, sigla_uf == uf_amostra) |> select(id_municipio_tse, cargo, votos_nominais),
+             votos_tse, by = c("id_municipio_tse", "cargo")) |>
+    transmute(id_municipio_tse, cargo, saida = votos_nominais, tse = votos_nominais_tse),
+  "Votos nominais válidos por município e cargo (Acre, 1º turno)", tolerancia = 0.005
+) |> head(10)
+
+```

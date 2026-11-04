@@ -1,0 +1,332 @@
+---
+title: "10_2 Comparecimento, Vagas e Eleitorado Municipais"
+author: "Bruno Schaefer (IESP-UERJ)"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Dados das eleições municipais (2012, 2016, 2020, 2024)
+
+Por município (id_municipio = código IBGE; id_municipio_tse = código TSE)
+
+Retirados da basedosdados
+
+Posteriormente, validar a partir das informações retiradas diretamente do Portal de Dados Abertos do TSE
+
+https://dadosabertos.tse.jus.br/dataset/
+
+
+## Pacotes e configuração
+
+```{r}
+
+library(tidyverse)
+library(basedosdados)
+library(stringr)
+library(stringi)
+library(openxlsx)
+library(scales)
+library(here)
+source(here("0 Funções, estrutura e passo-a-passo", "0_pastas.R"))
+
+set_billing_id("seu-projeto") ## substituir por seu projeto
+
+anos_mun   <- c(2012, 2016, 2020, 2024)
+cargos_mun <- c("prefeito", "vereador")
+
+chaves_mun   <- c("ano", "id_municipio")
+chaves_cargo <- c("ano", "id_municipio", "cargo")
+
+```
+
+
+## Coleta dos dados
+
+
+### Perfil do eleitorado
+
+A agregação por município é feita no BigQuery, antes do download: a tabela
+original está no nível município × zona × perfil e tem milhões de linhas.
+
+```{r}
+
+bd_eleitorado <- basedosdados::bdplyr("basedosdados.br_tse_eleicoes.perfil_eleitorado_municipio_zona") %>%
+  dplyr::filter(ano %in% anos_mun) %>%
+  dplyr::group_by(ano, sigla_uf, id_municipio, id_municipio_tse, genero, instrucao) %>%
+  dplyr::summarise(eleitores = sum(eleitores, na.rm = TRUE), .groups = "drop")
+
+caracteristicas_eleitorado <- basedosdados::bd_collect(bd_eleitorado)
+rm(bd_eleitorado); gc()
+
+caracteristicas_eleitorado <- caracteristicas_eleitorado %>%
+  mutate(across(c(id_municipio, id_municipio_tse), as.character))
+
+```
+
+
+#### Codificação
+
+
+```{r}
+
+## Checagens
+count(caracteristicas_eleitorado, ano)
+table(caracteristicas_eleitorado$genero, useNA = "always")
+table(caracteristicas_eleitorado$instrucao, useNA = "always")
+
+# Linhas sem código IBGE (exterior/ZZ ou problema de chave)
+caracteristicas_eleitorado %>%
+  filter(is.na(id_municipio)) %>%
+  count(ano, sigla_uf)
+
+caracteristicas_eleitorado <- caracteristicas_eleitorado %>%
+  filter(sigla_uf != "ZZ", !is.na(id_municipio))
+
+chaves_perfil <- c("ano", "sigla_uf", "id_municipio", "id_municipio_tse")
+
+## 1. Total de eleitores
+eleitorado_total <- caracteristicas_eleitorado %>%
+  group_by(across(all_of(chaves_perfil))) %>%
+  summarise(total_eleitores = sum(eleitores, na.rm = TRUE), .groups = "drop")
+
+## 2. Gênero (2 = masculino, 4 = feminino, 0 = não informado)
+eleitorado_genero <- caracteristicas_eleitorado %>%
+  mutate(genero = recode(genero,
+                         "2" = "homens",
+                         "4" = "mulheres",
+                         "0" = "genero_ni")) %>%
+  count(across(all_of(chaves_perfil)), genero, wt = eleitores, name = "n") %>%
+  pivot_wider(names_from = genero, values_from = n,
+              names_prefix = "eleitores_", values_fill = 0)
+
+## 3. Instrução
+eleitorado_instrucao <- caracteristicas_eleitorado %>%
+  mutate(instrucao = recode(instrucao,
+                            "0" = "instr_ni",
+                            "1" = "analfabeto",
+                            "2" = "le_escreve",
+                            "3" = "fund_incompleto",
+                            "4" = "fund_completo",
+                            "5" = "medio_incompleto",
+                            "6" = "medio_completo",
+                            "7" = "sup_incompleto",
+                            "8" = "sup_completo")) %>%
+  count(across(all_of(chaves_perfil)), instrucao, wt = eleitores, name = "n") %>%
+  pivot_wider(names_from = instrucao, values_from = n,
+              names_prefix = "eleitores_", values_fill = 0)
+
+## 4. Juntar e calcular proporções
+eleitorado_mun <- eleitorado_total %>%
+  left_join(eleitorado_genero,    by = chaves_perfil, relationship = "one-to-one") %>%
+  left_join(eleitorado_instrucao, by = chaves_perfil, relationship = "one-to-one") %>%
+  mutate(across(starts_with("eleitores_"),
+                ~ .x / total_eleitores,
+                .names = "prop_{sub('eleitores_', '', .col)}"))
+
+# Uma linha por ano × município? (deve voltar vazio)
+eleitorado_mun %>% count(across(all_of(chaves_mun))) %>% filter(n > 1)
+
+count(eleitorado_mun, ano)   # ~5.570 municípios por ano
+
+```
+
+
+### Vagas
+
+
+```{r}
+
+vagas <- basedosdados::bdplyr("basedosdados.br_tse_eleicoes.vagas") %>%
+  dplyr::filter(ano %in% anos_mun) %>%
+  basedosdados::bd_collect()
+
+names(vagas)                  # confirmar id_municipio, id_municipio_tse e tipo_eleicao
+count(vagas, ano, tipo_eleicao)
+count(vagas, cargo)
+
+vagas_mun <- vagas %>%
+  mutate(across(c(id_municipio, id_municipio_tse), as.character)) %>%
+  filter(tipo_eleicao %in% "eleicao ordinaria",
+         cargo %in% cargos_mun,
+         !is.na(id_municipio)) %>%
+  group_by(across(all_of(chaves_cargo))) %>%
+  summarise(vagas = max(vagas), .groups = "drop")
+
+# Uma linha por chave? (deve voltar vazio)
+vagas_mun %>% count(across(all_of(chaves_cargo))) %>% filter(n > 1)
+
+# Prefeito: sempre 1 vaga. Vereador: entre 9 e 55
+vagas_mun %>% group_by(ano, cargo) %>%
+  summarise(n = n(), min = min(vagas), max = max(vagas), .groups = "drop")
+
+```
+
+
+### Comparecimento
+
+
+```{r}
+
+bd_comparecimento <- basedosdados::bdplyr("basedosdados.br_tse_eleicoes.detalhes_votacao_municipio") %>%
+  dplyr::filter(ano %in% anos_mun) %>%
+  dplyr::select(
+    ano, sigla_uf,
+    id_municipio, id_municipio_tse, turno,
+    cargo, aptos, votos_validos,
+    votos_brancos, votos_nulos,
+    votos_legenda, votos_nominais,
+    abstencoes, tipo_eleicao
+  )
+
+comparecimento <- basedosdados::bd_collect(bd_comparecimento)
+rm(bd_comparecimento); gc()
+
+comparecimento <- comparecimento %>%
+  mutate(across(c(id_municipio, id_municipio_tse), as.character))
+
+```
+
+#### Codificação
+
+```{r}
+
+# Eleições suplementares municipais são numerosas: conferir os rótulos
+count(comparecimento, ano, tipo_eleicao) %>% print(n = Inf)
+count(comparecimento, cargo)
+
+vars_votos <- c("aptos", "votos_validos", "votos_brancos", "votos_nulos",
+                "votos_legenda", "votos_nominais", "abstencoes")
+
+comparecimento_mun <- comparecimento %>%
+  filter(tipo_eleicao %in% "eleicao ordinaria",
+         cargo %in% cargos_mun,
+         !is.na(id_municipio)) %>%
+  group_by(ano, sigla_uf, id_municipio, id_municipio_tse, cargo, turno) %>%
+  summarise(
+    n_linhas = n(),
+    across(all_of(vars_votos), ~ sum(as.numeric(.x), na.rm = TRUE)),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    comparecimento     = aptos - abstencoes,
+    votos_totais       = votos_validos + votos_brancos + votos_nulos,
+    votos_por_eleitor  = votos_totais / comparecimento,   # ≈ 1 em todos os cargos
+
+    # Votos anulados (candidatos cassados/indeferidos): o que falta para 1 voto por eleitor
+    votos_anulados     = pmax(comparecimento - votos_totais, 0),
+
+    pct_comparecimento = 100 * comparecimento / aptos,
+    pct_abstencao      = 100 * abstencoes / aptos,
+    pct_validos        = 100 * votos_validos / comparecimento,
+    pct_brancos        = 100 * votos_brancos / comparecimento,
+    pct_nulos          = 100 * votos_nulos / comparecimento,
+    pct_anulados       = 100 * votos_anulados / comparecimento,
+    pct_legenda        = if_else(votos_validos > 0, 100 * votos_legenda / votos_validos, NA_real_)
+  )
+
+# 1. A tabela já vem no nível do município: n_linhas deve ser sempre 1
+count(comparecimento_mun, n_linhas)
+
+# 2. Votos por eleitor ≈ 1
+comparecimento_mun %>%
+  group_by(ano, cargo, turno) %>%
+  summarise(votos_por_eleitor = round(sum(votos_totais) / sum(comparecimento), 3),
+            .groups = "drop")
+
+# 3. Municípios com anulação relevante (> 5% do comparecimento)
+comparecimento_mun %>%
+  filter(pct_anulados > 5) %>%
+  count(ano, cargo, turno)
+
+# 4. Nos cargos proporcionais, válidos = legenda + nominais
+comparecimento_mun %>%
+  filter(cargo == "vereador", votos_validos != votos_legenda + votos_nominais)
+
+# 5. 2º turno só para prefeito (municípios com mais de 200 mil eleitores)
+count(comparecimento_mun, ano, cargo, turno)
+
+# 6. id_municipio_tse consistente entre votação e perfil do eleitorado?
+comparecimento_mun %>%
+  distinct(ano, id_municipio, id_municipio_tse) %>%
+  inner_join(distinct(eleitorado_mun, ano, id_municipio, id_municipio_tse_perfil = id_municipio_tse),
+             by = chaves_mun) %>%
+  filter(id_municipio_tse != id_municipio_tse_perfil)
+
+```
+
+
+## Juntar bancos de dados
+
+
+Juntar bancos de dados por ano, município e cargo (1º turno como referência)
+
+
+```{r}
+
+# 1. Votação: 1º turno --------------------------------------------------------
+comp_t1 <- comparecimento_mun %>%
+  filter(turno == 1) %>%
+  select(-turno, -n_linhas)
+
+# Indicador de 2º turno (prefeito)
+segundo_turno <- comparecimento_mun %>%
+  filter(turno == 2) %>%
+  distinct(across(all_of(chaves_cargo))) %>%
+  mutate(houve_segundo_turno = 1L)
+
+# 2. Junção -------------------------------------------------------------------
+base_mun <- comp_t1 %>%
+  left_join(vagas_mun, by = chaves_cargo, relationship = "one-to-one") %>%
+  left_join(segundo_turno, by = chaves_cargo, relationship = "one-to-one") %>%
+  mutate(houve_segundo_turno = replace_na(houve_segundo_turno, 0L)) %>%
+  left_join(select(eleitorado_mun, -sigla_uf, -id_municipio_tse),
+            by = chaves_mun, relationship = "many-to-one") %>%
+  mutate(
+    eleitores_por_vaga = aptos / vagas,
+    votos_por_vaga     = votos_validos / vagas,
+    razao_aptos_perfil = aptos / total_eleitores
+  )
+
+# 3. Checagens ----------------------------------------------------------------
+# Esperado: ~5.570 municípios × 2 cargos por ano
+count(base_mun, ano, cargo)
+
+# Linhas sem par
+anti_join(comp_t1, vagas_mun, by = chaves_cargo) %>% count(ano, cargo)
+anti_join(comp_t1, eleitorado_mun, by = chaves_mun) %>% count(ano)
+base_mun %>% filter(is.na(vagas) | is.na(total_eleitores)) %>% count(ano, cargo)
+
+# Municípios com votação ordinária para um cargo e não para o outro
+base_mun %>% count(ano, id_municipio) %>% filter(n != 2)
+
+# Aptos (votação) x eleitorado (perfil): deve ficar perto de 1
+summary(base_mun$razao_aptos_perfil)
+
+count(base_mun, ano, cargo, houve_segundo_turno)
+
+```
+
+
+## Exportação
+
+
+```{r}
+
+dir.create(pasta$prod_distritos, showWarnings = FALSE, recursive = TRUE)
+
+write.xlsx(
+  base_mun,
+  file      = file.path(pasta$prod_distritos, "base_mun.xlsx"),
+  rowNames  = FALSE,
+  overwrite = TRUE
+)
+
+saveRDS(base_mun, file.path(pasta$prod_distritos, "base_mun.rds"))
+
+```
+
+

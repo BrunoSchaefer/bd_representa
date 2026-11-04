@@ -1,0 +1,289 @@
+---
+title: "8_2 Bens Municipais"
+author: "Bruno Schaefer (IESP-UERJ)"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+Dados dos bens dos candidatos das eleições municipais (2012, 2016, 2020 e 2024)
+
+Por candidato
+
+Retirados da basedosdados
+
+
+Posteriormente, validar a partir das informaçoes retiradas diretamente do Portal de Dados Abertos do TSE 
+
+https://dadosabertos.tse.jus.br/dataset/ 
+
+
+## Pacotes e configuração
+
+```{r}
+
+library(tidyverse)
+library(basedosdados)
+library(stringr)
+library(stringi)
+library(openxlsx)
+library(scales)
+library(deflateBR)
+library(here)
+source(here("0 Funções, estrutura e passo-a-passo", "0_pastas.R"))
+
+set_billing_id("seu-projeto") ## substituir por seu projeto
+
+# Somente eleições ordinárias. "eleicoes municipais 2020 - ap" é a eleição
+# ordinária de Macapá (AP) de 2020, adiada para dezembro por causa do apagão
+# no estado; as demais categorias são eleições suplementares e novas eleições.
+tipos_ordinarios <- c("eleicao ordinaria", "eleicoes municipais 2020 - ap")
+
+
+
+```
+
+
+
+## Dados Candidatos
+
+### Carregar dados
+
+```{r}
+
+bd_rec <- basedosdados::bdplyr("basedosdados.br_tse_eleicoes.bens_candidato") %>%
+  dplyr::filter(ano %in% c(2012, 2016, 2020, 2024), tipo_eleicao %in% tipos_ordinarios) %>%
+  dplyr::select(
+    ano, sigla_uf, tipo_eleicao,
+    titulo_eleitoral_candidato, sequencial_candidato, 
+    tipo_item, descricao_item,
+    valor_item
+  )
+
+bens <- basedosdados::bd_collect(bd_rec)
+rm(bd_rec); gc()
+
+names(bens)
+
+summary(bens)
+
+
+bens %>%
+  count(ano, sem_tipo = is.na(tipo_item)) %>%
+  tidyr::pivot_wider(names_from = sem_tipo, values_from = n)
+
+# Se os NA se concentram em algum ano, veja se a descrição permite recuperar o tipo
+bens %>% filter(is.na(tipo_item)) %>% slice_sample(n = 30) %>% select(ano, descricao_item, valor_item)
+
+
+```
+
+### Categorização
+
+
+```{r}
+
+table(bens$ano)
+
+itens <- bens %>%
+  count(tipo_item, name = "n_doacoes", sort = TRUE)
+
+head(itens, 50)
+
+
+library(stringi)
+
+norm_txt <- function(x) x %>% stri_trans_general("Latin-ASCII") %>% str_to_lower() %>% str_squish()
+
+tipos_imoveis <- c(
+  "terreno", "casa", "apartamento", "outros bens imoveis", "terra nua",
+  "sala ou conjunto", "predio comercial", "loja", "construcao",
+  "predio residencial", "benfeitorias", "galpao"
+)
+
+tipos_veiculos <- c(
+  "veiculo automotor terrestre: caminhao, automovel, moto, etc.",
+  "embarcacao", "aeronave"
+)
+
+tipos_participacoes <- c(
+  "quotas ou quinhoes de capital", "outras participacoes societarias"
+)
+
+tipos_liquidez <- c(
+  "deposito bancario em conta corrente no pais",
+  "deposito bancario em conta corrente no exterior",
+  "caderneta de poupanca",
+  "dinheiro em especie - moeda nacional",
+  "dinheiro em especie - moeda estrangeira",
+  "outros depositos a vista e numerario"
+)
+
+tipos_aplicacoes <- c(
+  "aplicacao de renda fixa (cdb, rdb e outros)",
+  "outras aplicacoes e investimentos",
+  "acoes (inclusive as provenientes de linha telefonica)",
+  "outros fundos",
+  "fundos: acoes, mutuos de privatizacao, invest. empresas emergentes, invest.participacao e invest. indice mercado",
+  "vgbl - vida gerador de beneficio livre",
+  "fundo de capitalizacao",
+  "fundo de investimento financeiro - fif",
+  "fundo de longo prazo e fundo de investimentos em direitos creditorios (fidc)",
+  "fundo de investimento imobiliario",
+  "fundo de curto prazo",
+  "fundo de acoes, inclusive carteira livre e fundo de investimento no exterior",
+  "fundo de aplicacao em quotas de fundos de investimento",
+  "ouro, ativo financeiro",
+  "mercado futuros, de opcoes e a termo",
+  "plano pait e caderneta de peculio"
+)
+
+tipos_creditos <- c(
+  "credito decorrente de emprestimo", "credito decorrente de alienacao",
+  "outros creditos e poupanca vinculados", "consorcio nao contemplado",
+  "poupanca para construcao ou aquisicao de bem imovel", "leasing"
+)
+
+tipos_outros <- c(
+  "outros bens e direitos", "outros bens moveis", "linha telefonica",
+  "joia, quadro, objeto de arte, de colecao, antiguidade, etc.",
+  "titulo de clube e assemelhado",
+  "bem relacionado com o exercicio da atividade autonoma",
+  "direito de autor, de inventor e patente",
+  "licenca e concessoes especiais", "direito de lavra e assemelhado"
+)
+
+padrao_rural <- "\\b(fazenda|sitio|chacara|rural|gleba|hectare|ha\\b|lote rural|imovel rural)"
+
+bens <- bens %>%
+  mutate(
+    tipo_norm = norm_txt(tipo_item),
+    desc_norm = norm_txt(descricao_item),
+    valor_item = as.numeric(valor_item),
+
+    bens_imoveis      = if_else(tipo_norm %in% tipos_imoveis, 1, 0),
+    bens_veiculos     = if_else(tipo_norm %in% tipos_veiculos, 1, 0),
+    bens_participacoes = if_else(tipo_norm %in% tipos_participacoes, 1, 0),
+    bens_liquidez     = if_else(tipo_norm %in% tipos_liquidez, 1, 0),
+    bens_aplicacoes   = if_else(tipo_norm %in% tipos_aplicacoes, 1, 0),
+    bens_creditos     = if_else(tipo_norm %in% tipos_creditos, 1, 0),
+    bens_outros       = if_else(tipo_norm %in% tipos_outros, 1, 0),
+
+    # Subcategoria: imóvel rural (terra nua ou descrição rural dentro de imóveis)
+    bens_imoveis_rurais = if_else(
+      tipo_norm %in% "terra nua" |
+        (bens_imoveis == 1 & str_detect(desc_norm, padrao_rural) %in% TRUE), 1, 0),
+
+    # Agregados
+    bens_reais       = pmax(bens_imoveis, bens_veiculos),
+    bens_financeiros = pmax(bens_liquidez, bens_aplicacoes, bens_creditos)
+  )
+
+# Checagens ------------------------------------------------------------------
+# 1. Tipos não NA que não caíram em nenhuma categoria (deve voltar vazio)
+bens <- bens %>%
+  mutate(
+    bens_nao_identificados = if_else(is.na(tipo_norm), 1, 0)
+  )
+
+# Checagem: agora toda linha cai em exatamente uma categoria
+bens %>%
+  mutate(n_cat = bens_imoveis + bens_veiculos + bens_participacoes + bens_liquidez +
+           bens_aplicacoes + bens_creditos + bens_outros + bens_nao_identificados) %>%
+  count(ano, n_cat)
+
+# Confirma que os não identificados estão em 2010
+table(bens$ano, bens$bens_nao_identificados)
+
+
+
+```
+
+
+
+### Unificar ao nível do candidato 
+
+
+```{r}
+
+vars_bens <- c(
+  "bens_imoveis", "bens_imoveis_rurais", "bens_veiculos", "bens_participacoes",
+  "bens_liquidez", "bens_aplicacoes", "bens_creditos", "bens_outros",
+  "bens_nao_identificados",
+  "bens_reais", "bens_financeiros"
+)
+
+
+dados_cand_bens <- bens %>%
+  group_by(ano, sigla_uf, sequencial_candidato) %>%
+  summarise(
+    n_bens          = n(),
+    patrimonio_total = sum(valor_item, na.rm = TRUE),
+    across(all_of(vars_bens),
+           ~ sum(valor_item[.x == 1], na.rm = TRUE),
+           .names = "soma_{.col}"),
+    across(all_of(vars_bens), ~ as.integer(any(.x == 1)), .names = "tem_{.col}"),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    across(starts_with("soma_bens_"),
+           ~ if_else(patrimonio_total > 0, 100 * .x / patrimonio_total, NA_real_),
+           .names = "{sub('soma_', 'pct_', .col)}")
+  )
+
+dados_cand_bens %>%
+  group_by(ano) %>%
+  summarise(across(starts_with("pct_"), ~ round(mean(.x, na.rm = TRUE), 1)))
+
+# Nenhum percentual deveria passar de 100
+dados_cand_bens %>% filter(if_any(starts_with("pct_"), ~ .x > 100))
+
+
+
+```
+
+
+### Deflação
+
+```{r}
+
+names(dados_cand_bens)
+
+bens_candidatos_municipais <- dados_cand_bens %>%
+  # Deflaciona variáveis pelo IPCA de 12/2025
+  mutate(across(c(patrimonio_total, starts_with("soma_bens_")),   # selecionar variáveis
+                ~ ipca(.x, as.Date(paste0(ano, "-12-31")), "12/2025")))
+
+
+summary(bens_candidatos_municipais)
+
+names(bens_candidatos_municipais)
+
+
+
+```
+
+
+## Exportação
+
+
+```{r}
+
+dir.create(pasta$prod_candidatos, showWarnings = FALSE, recursive = TRUE)
+
+
+
+# .csv (separador ";"): o banco passa do limite de linhas do Excel (1.048.576)
+data.table::fwrite(
+  bens_candidatos_municipais,
+  file.path(pasta$prod_candidatos, "bens_candidatos_municipais.csv"),
+  sep = ";"
+)
+
+
+```
+

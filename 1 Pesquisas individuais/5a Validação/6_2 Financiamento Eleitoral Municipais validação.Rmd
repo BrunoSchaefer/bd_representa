@@ -1,0 +1,125 @@
+---
+title: "6_2 Financiamento Eleitoral Municipais - validação"
+author: "Bruno Schaefer (IESP-UERJ)"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Objetivo
+
+Comparar o banco `financiamento_municipais.csv` (código 6_2, feito com a basedosdados) com os arquivos de prestação de contas do Portal de Dados Abertos do TSE, para uma amostra: **eleição de 2020, candidatos de Tocantins** (prefeitos e vereadores).
+
+Como no 6_1, os valores produzidos estão deflacionados; o fator de deflação é estimado pela mediana da razão produzido/TSE e os valores são comparados em termos nominais. Critério: diferença de até 1% por candidato, com pelo menos 99% dos candidatos dentro da tolerância.
+
+## Pacotes e amostra
+
+```{r}
+
+library(tidyverse)
+library(openxlsx)
+library(here)
+
+source(here("0 Funções, estrutura e passo-a-passo", "0_funcoes_auxiliares.R"))
+
+ano_amostra <- 2020
+uf_amostra  <- "TO"
+zip_tse     <- file.path(pasta$brutos_financ_eleitoral,
+                    "prestacao_de_contas_eleitorais_candidatos_2020.zip")
+
+```
+
+## Banco produzido
+
+```{r}
+
+produzido <- ler_banco(file.path(pasta$prod_candidatos, "financiamento_municipais.csv")) |>
+  filter(ano == ano_amostra, sigla_uf == uf_amostra) |>
+  mutate(numero_candidato = as.character(numero_candidato),
+         id_municipio_tse = as.integer(id_municipio_tse))
+
+count(produzido, cargo)
+
+```
+
+## Receitas
+
+```{r}
+
+rec_tse <- ler_zip_tse(zip_tse, paste0("receitas_candidatos_", ano_amostra, "_", uf_amostra, ".csv"))
+
+count(rec_tse, NM_TIPO_ELEICAO, ST_TURNO)
+
+rec_tse_cand <- rec_tse |>
+  filter(texto_bd(NM_TIPO_ELEICAO) %in% c("ordinaria", "eleicao ordinaria")) |>
+  mutate(
+    cargo            = texto_bd(DS_CARGO),
+    id_municipio_tse = as.integer(SG_UE),
+    numero_candidato = NR_CANDIDATO,
+    valor            = converter_valor_tse(VR_RECEITA),
+    publico          = texto_bd(DS_FONTE_RECEITA) %in% c("fundo especial", "fundo partidario")
+  ) |>
+  group_by(cargo, id_municipio_tse, numero_candidato) |>
+  summarise(receitas_tse = sum(valor, na.rm = TRUE),
+            publicos_tse = sum(valor[publico], na.rm = TRUE),
+            .groups = "drop")
+
+chaves <- c("cargo", "id_municipio_tse", "numero_candidato")
+
+comp_rec <- full_join(
+  select(produzido, all_of(chaves), soma_receitas, soma_recursos_publicos),
+  rec_tse_cand, by = chaves
+)
+
+fator <- comp_rec |>
+  filter(soma_receitas > 0, receitas_tse > 0) |>
+  summarise(fator = median(soma_receitas / receitas_tse)) |>
+  pull(fator)
+
+fator
+
+tryCatch(
+  deflateBR::ipca(1, as.Date(paste0(ano_amostra, "-12-31")), "12/2025"),
+  error = function(e) "deflateBR indisponível"
+)
+
+comp_total <- comparar_valores(
+  comp_rec |> transmute(across(all_of(chaves)), saida = soma_receitas / fator, tse = receitas_tse),
+  "Receita total por candidato (valores nominais)"
+)
+head(comp_total, 10)
+
+comp_publico <- comparar_valores(
+  comp_rec |> transmute(across(all_of(chaves)), saida = soma_recursos_publicos / fator, tse = publicos_tse),
+  "Recursos públicos (FEFC + Fundo Partidário) por candidato"
+)
+head(comp_publico, 10)
+
+```
+
+## Despesas
+
+```{r}
+
+desp_tse <- ler_zip_tse(zip_tse, paste0("despesas_contratadas_candidatos_", ano_amostra, "_", uf_amostra, ".csv"))
+
+desp_tse_cand <- desp_tse |>
+  filter(texto_bd(NM_TIPO_ELEICAO) %in% c("ordinaria", "eleicao ordinaria")) |>
+  mutate(cargo            = texto_bd(DS_CARGO),
+         id_municipio_tse = as.integer(SG_UE),
+         numero_candidato = NR_CANDIDATO,
+         valor            = converter_valor_tse(VR_DESPESA_CONTRATADA)) |>
+  group_by(cargo, id_municipio_tse, numero_candidato) |>
+  summarise(despesas_tse = sum(valor, na.rm = TRUE), .groups = "drop")
+
+comp_desp <- comparar_valores(
+  full_join(select(produzido, all_of(chaves), despesas_total_can), desp_tse_cand, by = chaves) |>
+    transmute(across(all_of(chaves)), saida = despesas_total_can / fator, tse = despesas_tse),
+  "Despesas contratadas por candidato"
+)
+head(comp_desp, 10)
+
+```

@@ -1,0 +1,117 @@
+---
+title: "7_2 Características Candidatos Municipais - validação"
+author: "Bruno Schaefer (IESP-UERJ)"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Objetivo
+
+Comparar o banco `candidaturas_municipais.csv` (código 7_2, feito com a basedosdados) com o arquivo de candidaturas do Portal de Dados Abertos do TSE (`consulta_cand`), para uma amostra: **eleição de 2020, Tocantins** (prefeitos e vereadores).
+
+Verificações: correspondência das candidaturas (município, cargo e número), contagem por cargo contra as candidaturas aptas no TSE e concordância de gênero, cor/raça, data de nascimento e título eleitoral. Critério: pelo menos 99%.
+
+## Pacotes e amostra
+
+```{r}
+
+library(tidyverse)
+library(openxlsx)
+library(here)
+
+source(here("0 Funções, estrutura e passo-a-passo", "0_funcoes_auxiliares.R"))
+
+ano_amostra <- 2020
+uf_amostra  <- "TO"
+cargos      <- c("prefeito", "vereador")
+
+```
+
+## Dados
+
+```{r}
+
+produzido <- ler_banco(file.path(pasta$prod_candidatos, "candidaturas_municipais.csv")) |>
+  filter(ano == ano_amostra, sigla_uf == uf_amostra, cargo %in% cargos) |>
+  mutate(
+    id_municipio_tse = as.integer(id_municipio_tse),
+    numero           = as.character(numero),
+    data_nascimento  = if (is.numeric(data_nascimento)) convertToDate(data_nascimento) else as.Date(data_nascimento)
+  )
+
+tse <- ler_zip_tse(
+  file.path(pasta$brutos_candidatos, paste0("consulta_cand_", ano_amostra, ".zip")),
+  paste0("consulta_cand_", ano_amostra, "_", uf_amostra, ".csv")
+) |>
+  as_tibble() |>
+  filter(NR_TURNO == "1", CD_TIPO_ELEICAO == "2") |>
+  mutate(
+    cargo            = texto_bd(DS_CARGO),
+    id_municipio_tse = as.integer(SG_UE),
+    numero           = NR_CANDIDATO,
+    genero_tse       = texto_bd(DS_GENERO),
+    raca_tse         = texto_bd(DS_COR_RACA),
+    nascimento_tse   = dmy(DT_NASCIMENTO, quiet = TRUE),
+    titulo_tse       = NR_TITULO_ELEITORAL_CANDIDATO,
+    apto             = DS_SITUACAO_CANDIDATURA == "APTO"
+  ) |>
+  filter(cargo %in% cargos) |>
+  distinct(id_municipio_tse, cargo, numero, .keep_all = TRUE)
+
+```
+
+## 1. Correspondência
+
+```{r}
+
+chaves <- c("id_municipio_tse", "cargo", "numero")
+
+comp <- produzido |>
+  left_join(select(tse, all_of(chaves), genero_tse, raca_tse, nascimento_tse, titulo_tse, apto),
+            by = chaves)
+
+comp |>
+  summarise(candidaturas = n(), encontradas_no_tse = 100 * mean(!is.na(titulo_tse)))
+
+comp |> filter(is.na(titulo_tse)) |> select(id_municipio_tse, cargo, numero, nome) |> head(20)
+
+```
+
+## 2. Contagem por cargo
+
+```{r}
+
+full_join(
+  count(produzido, cargo, name = "produzido"),
+  tse |> filter(apto) |> count(cargo, name = "tse_aptos"),
+  by = "cargo"
+) |>
+  mutate(dif_pct = round(100 * (produzido - tse_aptos) / tse_aptos, 2))
+
+```
+
+## 3. Concordância das características
+
+```{r}
+
+concordancia <- comp |>
+  filter(!is.na(titulo_tse)) |>
+  summarise(
+    genero     = mean(genero == genero_tse, na.rm = TRUE),
+    raca       = mean(raca == raca_tse, na.rm = TRUE),
+    nascimento = mean(data_nascimento == nascimento_tse, na.rm = TRUE),
+    titulo     = mean(as.numeric(titulo_eleitoral) == as.numeric(titulo_tse), na.rm = TRUE)
+  ) |>
+  mutate(across(everything(), ~ round(100 * .x, 2)))
+
+concordancia
+
+cat("Veredito:",
+    if (all(unlist(concordancia) >= 99, na.rm = TRUE)) "OK" else "ATENÇÃO — verificar discordâncias",
+    "\n")
+
+```

@@ -1,0 +1,289 @@
+---
+title: "11 Informações Socioeconômicas"
+author: "Bruno Schaefer (IESP-UERJ)"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+# Objetivo
+
+Reunir informações demográficas e socioeconômicas da basedosdados por distrito e ano (2010–2025):
+
+- **Município:** chave `ano` e `id_municipio` (código IBGE, 7 dígitos);
+- **UF:** chave `ano` e `sigla_uf` (soma dos municípios).
+
+Os códigos das etapas seguintes procuram estes arquivos em `1 Pesquisas individuais/4a Produtos/Socioeconômico`:
+
+| Arquivo | Chaves | Usado em |
+|---|---|---|
+| `socioeconomico_municipio.csv` | `ano`, `id_municipio` | 12 (candidatos), 13 (diretórios), 16 (distritos) |
+| `socioeconomico_uf.csv` | `ano`, `sigla_uf` | 12, 13, 16 |
+
+`prop_negros_populacao` (pretas + pardas sobre a população) é o parâmetro *p* do índice de equidade racial (DRI) no código 16.
+
+**Fontes (basedosdados):**
+
+| Informação | Tabela | Anos disponíveis |
+|---|---|---|
+| População por sexo e cor/raça (Censo) | `br_ibge_censo_2022.populacao_grupo_idade_sexo_raca` | 2010 e 2022 |
+| Estimativas populacionais | `br_ibge_populacao.municipio` | 1991–2025 |
+| PIB municipal e valor adicionado | `br_ibge_pib.municipio` | 2002–2023 (componentes até 2021) |
+
+**Decisões:**
+
+- **Janela dos censos:** a composição por sexo e cor/raça é constante dentro da janela de cada censo — Censo 2010 para 2010–2015 e Censo 2022 para 2016–2025 (`ano_censo` informa o censo usado). Municípios instalados depois de 2010 (ex.: Mojuí dos Campos, Pescaria Brava, Balneário Rincão, Pinto Bandeira, Paraíso das Águas) ficam sem composição até 2015.
+- **População:** estimativas anuais do IBGE (`populacao`); nos anos de censo, a própria contagem.
+- **PIB:** valores deflacionados pelo IPCA para reais de dezembro de 2025 (valor de cada ano em 31/12). O PIB municipal só está disponível até 2023: em 2024 e 2025 as variáveis de PIB ficam NA. Em 2022 e 2023 a basedosdados traz apenas o PIB total (sem impostos e valor adicionado por setor): nesses anos `impostos_pib` e `dependencia_*` ficam NA.
+- **Participações setoriais:** `dependencia_*` = valor adicionado do setor / valor adicionado total (`dependencia_adm` = administração, defesa, educação e saúde públicas e seguridade social); `impostos_pib` = impostos líquidos / PIB.
+
+# Pacotes e pastas
+
+```{r}
+library(tidyverse)
+library(basedosdados)
+library(here)
+library(deflateBR)
+library(data.table)
+
+source(here("0 Funções, estrutura e passo-a-passo", "0_funcoes_auxiliares.R"))
+
+set_billing_id("seu-projeto") ## substituir por seu projeto
+
+anos <- 2010:2025
+dir.create(pasta$prod_socioeconomico, showWarnings = FALSE, recursive = TRUE)
+```
+
+# Diretório de municípios
+
+```{r}
+query <- "
+SELECT
+    dados.id_municipio AS id_municipio,
+    dados.id_municipio_tse AS id_municipio_tse,
+    dados.nome AS nome_municipio,
+    dados.sigla_uf AS sigla_uf
+FROM `basedosdados.br_bd_diretorios_brasil.municipio` AS dados
+"
+
+diretorios <- read_sql(query, billing_project_id = get_billing_id()) |>
+  mutate(id_municipio = as.character(id_municipio))
+
+nrow(diretorios)
+```
+
+# População por sexo e cor/raça (Censos 2010 e 2022)
+
+A tabela traz 21 grupos de idade, sem linhas de total: a soma é feita no BigQuery.
+
+```{r}
+query <- "
+SELECT
+    dados.ano AS ano,
+    dados.id_municipio AS id_municipio,
+    dados.sexo AS sexo,
+    dados.cor_raca AS cor_raca,
+    SUM(dados.populacao) AS populacao
+FROM `basedosdados.br_ibge_censo_2022.populacao_grupo_idade_sexo_raca` AS dados
+GROUP BY 1, 2, 3, 4
+"
+
+populacao_censo <- read_sql(query, billing_project_id = get_billing_id()) |>
+  mutate(ano = as.integer(ano), id_municipio = as.character(id_municipio), populacao = as.numeric(populacao))
+
+count(populacao_censo, ano, cor_raca, wt = populacao)
+count(populacao_censo, ano, sexo, wt = populacao)
+```
+
+## Categorização - Município
+
+```{r}
+censo_mun <- populacao_censo |>
+  group_by(ano_censo = ano, id_municipio) |>
+  summarise(
+    censo_populacao         = sum(populacao, na.rm = TRUE),
+    censo_mulheres          = sum(populacao[sexo == "Mulheres"], na.rm = TRUE),
+    censo_pessoas_pretas    = sum(populacao[cor_raca == "Preta"], na.rm = TRUE),
+    censo_pessoas_pardas    = sum(populacao[cor_raca == "Parda"], na.rm = TRUE),
+    censo_pessoas_brancas   = sum(populacao[cor_raca == "Branca"], na.rm = TRUE),
+    censo_pessoas_amarelas  = sum(populacao[cor_raca == "Amarela"], na.rm = TRUE),
+    censo_pessoas_indigenas = sum(populacao[cor_raca == "Indígena"], na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# Toda a população tem cor/raça declarada (categorias exaustivas)
+stopifnot(with(censo_mun, all(censo_populacao == censo_pessoas_pretas + censo_pessoas_pardas + censo_pessoas_brancas +
+                                censo_pessoas_amarelas + censo_pessoas_indigenas)))
+
+# Proporções (também usadas, com os totais somados, no nível da UF)
+proporcoes_censo <- function(x) {
+  x |>
+    mutate(prop_mulheres_populacao  = censo_mulheres / censo_populacao,
+           prop_pretos_populacao    = censo_pessoas_pretas / censo_populacao,
+           prop_pardos_populacao    = censo_pessoas_pardas / censo_populacao,
+           prop_negros_populacao    = (censo_pessoas_pretas + censo_pessoas_pardas) / censo_populacao,
+           prop_brancos_populacao   = censo_pessoas_brancas / censo_populacao,
+           prop_amarelos_populacao  = censo_pessoas_amarelas / censo_populacao,
+           prop_indigenas_populacao = censo_pessoas_indigenas / censo_populacao)
+}
+
+censo_mun <- proporcoes_censo(censo_mun)
+count(censo_mun, ano_censo)
+summary(select(censo_mun, starts_with("prop_")))
+```
+
+# Estimativa populacional
+
+```{r}
+query <- "
+SELECT
+    dados.ano AS ano,
+    dados.id_municipio AS id_municipio,
+    dados.populacao AS populacao
+FROM `basedosdados.br_ibge_populacao.municipio` AS dados
+WHERE dados.ano BETWEEN 2010 AND 2025
+"
+
+estimativa_populacional <- read_sql(query, billing_project_id = get_billing_id()) |>
+  mutate(ano = as.integer(ano), id_municipio = as.character(id_municipio), populacao = as.numeric(populacao))
+
+count(estimativa_populacional, ano)
+```
+
+# PIB
+
+## Coleta dos dados
+
+```{r}
+query <- "
+SELECT
+    dados.id_municipio AS id_municipio,
+    dados.ano AS ano,
+    dados.pib AS pib,
+    dados.impostos_liquidos AS impostos_liquidos,
+    dados.va AS va,
+    dados.va_agropecuaria AS va_agropecuaria,
+    dados.va_industria AS va_industria,
+    dados.va_servicos AS va_servicos,
+    dados.va_adespss AS va_adespss
+FROM `basedosdados.br_ibge_pib.municipio` AS dados
+WHERE dados.ano BETWEEN 2010 AND 2025
+"
+
+pib <- read_sql(query, billing_project_id = get_billing_id()) |>
+  mutate(ano = as.integer(ano), id_municipio = as.character(id_municipio),
+         across(c(pib, impostos_liquidos, starts_with("va")), as.numeric))
+
+count(pib, ano)
+```
+
+## Deflacionamento e participações setoriais
+
+```{r}
+vars_pib <- c("pib", "impostos_liquidos", "va", "va_agropecuaria", "va_industria", "va_servicos", "va_adespss")
+
+# Deflaciona pelo IPCA para reais de 12/2025
+pib_municipios <- pib |>
+  mutate(across(all_of(vars_pib), ~ ipca(.x, as.Date(paste0(ano, "-12-31")), "12/2025")))
+
+# Participações (razões: indiferentes ao deflacionamento)
+participacoes <- function(x) {
+  x |>
+    mutate(impostos_pib          = impostos_liquidos / pib,
+           dependencia_adm       = va_adespss / va,
+           dependencia_industria = va_industria / va,
+           dependencia_agro      = va_agropecuaria / va,
+           dependencia_servicos  = va_servicos / va)
+}
+
+pib_municipios <- participacoes(pib_municipios)
+summary(select(pib_municipios, pib, starts_with("dependencia"), impostos_pib))
+```
+
+# Montagem e exportação
+
+## Município
+
+```{r}
+# Municípios presentes em alguma das fontes (exclui municípios recém-instalados
+# que só constam do diretório, como Boa Esperança do Norte-MT)
+com_dados <- unique(c(estimativa_populacional$id_municipio, censo_mun$id_municipio, pib$id_municipio))
+
+painel_mun <- diretorios |>
+  filter(id_municipio %in% com_dados) |>
+  select(id_municipio) |>
+  cross_join(tibble(ano = anos)) |>
+  mutate(ano_censo = if_else(ano <= 2015, 2010L, 2022L))
+
+socioeconomico_municipio <- painel_mun |>
+  left_join(estimativa_populacional, by = c("ano", "id_municipio")) |>
+  left_join(censo_mun, by = c("ano_censo", "id_municipio")) |>
+  left_join(pib_municipios, by = c("ano", "id_municipio")) |>
+  mutate(pib_per_capita = pib / populacao) |>
+  relocate(ano, id_municipio, ano_censo, populacao) |>
+  arrange(ano, id_municipio)
+
+# Uma linha por ano-município
+stopifnot(nrow(count(socioeconomico_municipio, ano, id_municipio) |> filter(n > 1)) == 0)
+
+# Cobertura por ano
+socioeconomico_municipio |>
+  group_by(ano) |>
+  summarise(municipios = n(),
+            com_populacao = sum(!is.na(populacao)),
+            com_censo = sum(!is.na(prop_negros_populacao)),
+            com_pib = sum(!is.na(pib)),
+            prop_negros_media = round(mean(prop_negros_populacao, na.rm = TRUE), 3)) |>
+  knitr::kable()
+```
+
+## UF
+
+Soma dos municípios (população, contagens do censo e PIB) e razões recalculadas sobre as somas.
+
+```{r}
+somar <- c("populacao", names(select(censo_mun, starts_with("censo_"))), vars_pib)
+
+socioeconomico_uf <- socioeconomico_municipio |>
+  left_join(select(diretorios, id_municipio, sigla_uf), by = "id_municipio") |>
+  group_by(ano, sigla_uf, ano_censo) |>
+  summarise(across(all_of(somar), ~ if (all(is.na(.x))) NA_real_ else sum(.x, na.rm = TRUE)), .groups = "drop") |>
+  proporcoes_censo() |>
+  participacoes() |>
+  mutate(pib_per_capita = pib / populacao) |>
+  relocate(ano, sigla_uf, ano_censo, populacao) |>
+  arrange(ano, sigla_uf)
+
+stopifnot(nrow(count(socioeconomico_uf, ano, sigla_uf) |> filter(n > 1)) == 0)
+stopifnot(n_distinct(socioeconomico_uf$sigla_uf) == 27)
+
+socioeconomico_uf |>
+  filter(ano %in% c(2010, 2016, 2022)) |>
+  select(ano, sigla_uf, populacao, prop_mulheres_populacao, prop_negros_populacao, pib_per_capita) |>
+  mutate(across(starts_with("prop_"), ~ round(.x, 3)), pib_per_capita = round(pib_per_capita)) |>
+  knitr::kable()
+```
+
+## Validação
+
+Brasil (soma das UFs) comparado aos valores publicados pelo IBGE: Censo 2010 — 190,76 milhões de habitantes, 50,7% pretos e pardos; Censo 2022 — 203,08 milhões, 55,5% pretos e pardos.
+
+```{r}
+socioeconomico_uf |>
+  filter(ano %in% c(2010, 2022)) |>
+  group_by(ano) |>
+  summarise(censo_populacao_mi = sum(censo_populacao) / 1e6,
+            prop_negros = sum(censo_pessoas_pretas + censo_pessoas_pardas) / sum(censo_populacao),
+            prop_mulheres = sum(censo_mulheres) / sum(censo_populacao)) |>
+  knitr::kable(digits = 3)
+```
+
+## Exportação
+
+```{r}
+fwrite(socioeconomico_municipio, file.path(pasta$prod_socioeconomico, "socioeconomico_municipio.csv"), sep = ";")
+fwrite(socioeconomico_uf, file.path(pasta$prod_socioeconomico, "socioeconomico_uf.csv"), sep = ";")
+```

@@ -1,0 +1,42 @@
+here() starts at <raiz do projeto>
+Dicionário: bd_dirigentes_nacional 
+Dicionário: bd_dirigentes_estadual 
+Dicionário: bd_dirigentes_municipal 
+Dicionário: bd_diretorios_nacional 
+Dicionário: bd_diretorios_estadual 
+Dicionário: bd_diretorios_municipal 
+Dicionário: bd_candidatos_governadoria 
+Dicionário: bd_candidatos_senado 
+Dicionário: bd_candidatos_camara 
+Dicionário: bd_candidatos_assembleia 
+Dicionário: bd_candidatos_prefeitura 
+Dicionário: bd_candidatos_vereanca 
+Dicionário: bd_partidos_camara 
+Dicionário: bd_partidos_assembleias 
+Dicionário: bd_partidos_vereanca 
+Dicionário: bd_distritos_estadual 
+Dicionário: bd_distritos_municipal 
+                         banco  linhas                   anos variaveis
+                        <char>   <num>                 <char>     <int>
+ 1:     bd_dirigentes_nacional   40663              2015–2025        80
+ 2:     bd_dirigentes_estadual  220230              2015–2025        80
+ 3:    bd_dirigentes_municipal 8548086              2015–2025        78
+ 4:     bd_diretorios_nacional     336              2015–2025       271
+ 5:     bd_diretorios_estadual    7277              2015–2025       270
+ 6:    bd_diretorios_municipal  720550              2015–2025       263
+ 7: bd_candidatos_governadoria     697 2010, 2014, 2018, 2022       185
+ 8:       bd_candidatos_senado     894 2010, 2014, 2018, 2022       185
+ 9:       bd_candidatos_camara   27841 2010, 2014, 2018, 2022       185
+10:   bd_candidatos_assembleia   60607 2010, 2014, 2018, 2022       185
+11:   bd_candidatos_prefeitura   63124 2012, 2016, 2020, 2024       191
+12:     bd_candidatos_vereanca 1751307 2012, 2016, 2020, 2024       191
+13:         bd_partidos_camara    2933 2010, 2014, 2018, 2022       353
+14:    bd_partidos_assembleias    2958 2010, 2014, 2018, 2022       353
+15:       bd_partidos_vereanca  228433 2012, 2016, 2020, 2024       330
+16:      bd_distritos_estadual     108 2010, 2014, 2018, 2022       126
+17:     bd_distritos_municipal   22271 2012, 2016, 2020, 2024        93
+
+Todas as variáveis têm descrição.
+
+Dicionários salvos em: <raiz do projeto>/3 Produtos finais/dicionarios 
+Houve 20 avisos (use warnings() para vê-los)
