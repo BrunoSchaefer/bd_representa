@@ -233,6 +233,7 @@
   /* ------------------------------------------------------------ 4. arquivos */
   function arquivos() {
     const grupo = estado.aGrupo;
+    if (!ARQ.length) { $("#t-arquivos").innerHTML = `<p class="vazio">Os arquivos estão sendo enviados para a <a href="${REPO}/releases">release</a> e aparecem aqui em breve.</p>`; return; }
     const lista = ARQ.filter((a) => grupo === "finais" ? !/^etapa[12]_/.test(a.arquivo) : a.arquivo.startsWith(grupo + "_"));
     const mb = (b) => b >= 1e9 ? (b / 1e9).toLocaleString("pt-BR", { maximumFractionDigits: 2 }) + " GB" : (b / 1e6).toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + " MB";
     const dic = (n) => { const base = n.replace(/\.csv\.gz$/, "").replace(/_\d{4}$/, ""); return grupo === "finais" ? `${REPO}/blob/main/3%20Produtos%20finais/dicionarios/dicionario_${base}_variaveis.csv` : null; };
