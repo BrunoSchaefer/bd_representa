@@ -20,7 +20,8 @@
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
   const estado = { partido: "", uf: "", dMetrica: "membros", cCargo: "Vereança", cGrupo: "mulheres", pNivel: "municipal", pAno: null, aGrupo: "finais",
-                   mCargo: "vereanca", mAno: null, mMedida: "candidaturas", mGrupo: "mulheres" };
+                   mCargo: "vereanca", mAno: null, mMedida: "candidaturas", mGrupo: "mulheres",
+                   pDim: "direcoes", pCargo: "vereanca", pMedida: "receitas", pGrupo: "mulheres" };
   let DIR = [], CAND = [], ARQ = [];
 
   const objetos = (j) => j.linhas.map((l) => Object.fromEntries(j.colunas.map((c, i) => [c, l[i]])));
@@ -62,6 +63,10 @@
     segmentado("#c-grupo", "cGrupo");
     segmentado("#a-grupo", "aGrupo");
     segmentado("#m-grupo", "mGrupo");
+    segmentado("#p-dim", "pDim");
+    segmentado("#p-grupo", "pGrupo");
+    $("#p-cargo").onchange = (e) => { estado.pCargo = e.target.value; desenhar(); };
+    $("#p-medida").onchange = (e) => { estado.pMedida = e.target.value; desenhar(); };
     $("#m-cargo").onchange = (e) => { estado.mCargo = e.target.value; desenhar(); };
     $("#m-ano").onchange = (e) => { estado.mAno = +e.target.value; desenhar(); };
     $("#m-medida").onchange = (e) => { estado.mMedida = e.target.value; desenhar(); };
@@ -313,40 +318,131 @@
   }
 
   /* ------------------------------------------------------------ 3. partidos (barras) */
-  function partidos() {
-    const el = $("#g-partidos");
-    const rows = filtra(DIR, { partido: false }).filter((r) => r.nivel === estado.pNivel && r.ano === estado.pAno);
-    const m = soma(rows, (r) => r.partido, ["mulheres", "membros"]);
-    const dados = [...m].filter(([, o]) => o.membros >= 20).map(([p, o]) => ({ p, v: o.mulheres / o.membros, n: o.membros, mu: o.mulheres })).sort((a, b) => b.v - a.v);
+  // Barras horizontais por partido. modo "pct": 0 a máx, com linha de referência opcional;
+  // modo "dri": divergente a partir de 0 (−1 a 1), cores da escala do mapa.
+  function barras(el, dados, { modo = "pct", ref = null, refRot = "", detalhe }) {
     if (!dados.length) { el.innerHTML = `<p class="vazio">Sem dados para este recorte.</p>`; return; }
-    const W = Math.max(320, el.clientWidth), bh = 18, gap = 6, m0 = { t: 8, r: 56, b: 24, l: 108 };
-    const H = m0.t + m0.b + dados.length * (bh + gap);
-    const iw = W - m0.l - m0.r, topo = Math.min(1, Math.ceil(Math.max(...dados.map((d) => d.v)) * 10) / 10 || 0.1);
-    const x = (v) => m0.l + (v / topo) * iw;
-    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Barras: percentual de mulheres por partido"><g class="grade">`;
-    for (let v = 0; v <= topo + 1e-9; v += 0.1) s += `<line x1="${x(v)}" x2="${x(v)}" y1="${m0.t}" y2="${H - m0.b}"/><text x="${x(v)}" y="${H - 6}" text-anchor="middle">${Math.round(v * 100)}%</text>`;
+    const W = Math.max(320, el.clientWidth), bh = 18, gap = 6, m0 = { t: ref != null ? 22 : 8, r: 56, b: 24, l: 108 };
+    const H = m0.t + m0.b + dados.length * (bh + gap), iw = W - m0.l - m0.r;
+    let x, ticks;
+    if (modo === "dri") {
+      const lim = Math.min(1, Math.max(0.2, Math.ceil(Math.max(...dados.map((d) => Math.abs(d.v))) * 5) / 5));
+      x = (v) => m0.l + ((v + lim) / (2 * lim)) * iw;
+      ticks = []; for (let v = -lim; v <= lim + 1e-9; v += lim / 2) ticks.push([v, fmtDri(Math.round(v * 100) / 100)]);
+    } else {
+      const topo = Math.min(1, Math.ceil(Math.max(ref || 0, ...dados.map((d) => d.v)) * 10) / 10 || 0.1);
+      x = (v) => m0.l + (v / topo) * iw;
+      ticks = []; for (let v = 0; v <= topo + 1e-9; v += topo > 0.5 ? 0.2 : 0.1) ticks.push([v, Math.round(v * 100) + "%"]);
+    }
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Barras por partido"><g class="grade">`;
+    for (const [v, t] of ticks) s += `<line x1="${x(v)}" x2="${x(v)}" y1="${m0.t}" y2="${H - m0.b}"/><text x="${x(v)}" y="${H - 6}" text-anchor="middle">${t}</text>`;
     s += `</g>`;
+    const x0 = modo === "dri" ? x(0) : m0.l;
     dados.forEach((d, i) => {
-      const yy = m0.t + i * (bh + gap), sel = estado.partido === d.p, cor = !estado.partido || sel ? css("--bar") : css("--bar-dim");
-      const w = Math.max(2, x(d.v) - m0.l);
-      s += `<g class="barra" data-i="${i}"><rect x="0" y="${yy - gap / 2}" width="${W}" height="${bh + gap}" fill="transparent"/>` +
+      const yy = m0.t + i * (bh + gap), sel = estado.partido === d.p, apagado = estado.partido && !sel;
+      const cor = modo === "dri" ? corDri(d.v) : css(apagado ? "--bar-dim" : "--bar");
+      const xa = x(d.v), w = Math.max(2, Math.abs(xa - x0)), esq = xa < x0, r = Math.min(4, w / 2);
+      const forma = esq
+        ? `M${x0} ${yy}h${-(w - r)}a${r} ${r} 0 0 0 ${-r} ${r}v${bh - 2 * r}a${r} ${r} 0 0 0 ${r} ${r}h${w - r}z`
+        : `M${x0} ${yy}h${w - r}a${r} ${r} 0 0 1 ${r} ${r}v${bh - 2 * r}a${r} ${r} 0 0 1 ${-r} ${r}h${-(w - r)}z`;
+      const rotulo = modo === "dri" ? fmtDri(d.v) : pct(d.v, 0);
+      s += `<g class="barra" data-i="${i}" opacity="${apagado && modo === "dri" ? 0.45 : 1}"><rect x="0" y="${yy - gap / 2}" width="${W}" height="${bh + gap}" fill="transparent"/>` +
         `<text x="${m0.l - 8}" y="${yy + bh / 2 + 4}" text-anchor="end" style="fill:var(${sel ? "--text" : "--text-2"});font-weight:${sel ? 700 : 400}">${esc(d.p)}</text>` +
-        `<path d="M${m0.l} ${yy}h${w - 4}a4 4 0 0 1 4 4v${bh - 8}a4 4 0 0 1 -4 4h${-(w - 4)}z" fill="${cor}"/>` +
-        `<text x="${m0.l + w + 6}" y="${yy + bh / 2 + 4}">${pct(d.v, 0)}</text></g>`;
+        `<path d="${forma}" fill="${cor}"/>` +
+        `<text x="${esq ? xa - 6 : xa + 6}" y="${yy + bh / 2 + 4}" text-anchor="${esq ? "end" : "start"}">${rotulo}</text></g>`;
     });
-    s += `</svg>`;
-    el.innerHTML = s;
+    if (modo === "dri") s += `<line x1="${x0}" x2="${x0}" y1="${m0.t - 4}" y2="${H - m0.b}" stroke="${css("--muted")}"/>`;
+    if (ref != null) s += `<line x1="${x(ref)}" x2="${x(ref)}" y1="${m0.t - 6}" y2="${H - m0.b}" stroke="${css("--text")}" stroke-dasharray="4 3"/>` +
+      `<text x="${x(ref)}" y="${m0.t - 9}" text-anchor="middle" style="fill:var(--text)">${esc(refRot)} ${pct(ref, 0)}</text>`;
+    el.innerHTML = s + `</svg>`;
     const tip = $("#tooltip");
     el.querySelectorAll(".barra").forEach((g) => {
       g.addEventListener("pointermove", (ev) => {
-        const d = dados[+g.dataset.i];
-        tip.innerHTML = `<b>${esc(d.p)}</b><div class="linha"><span>Mulheres</span><span>${pct(d.v)}</span></div><div class="linha"><span>Membros</span><span>${int(d.mu)} de ${int(d.n)}</span></div>`;
-        tip.hidden = false;
+        tip.innerHTML = detalhe(dados[+g.dataset.i]); tip.hidden = false;
         tip.style.left = Math.min(ev.clientX + 14, innerWidth - tip.offsetWidth - 8) + "px";
         tip.style.top = Math.max(8, ev.clientY - tip.offsetHeight - 12) + "px";
       });
       g.addEventListener("pointerleave", () => (tip.hidden = true));
     });
+  }
+  const linhaTip = (a, b) => `<div class="linha"><span>${a}</span><span>${b}</span></div>`;
+
+  const DIMS = {
+    direcoes: { sub: "Percentual de mulheres nas direções partidárias." },
+    candidaturas: { medida: "candidaturas", sub: "Participação do grupo nas candidaturas da lista do partido." },
+    eleitos: { medida: "eleitos", sub: "Participação do grupo entre os eleitos da lista do partido." },
+    financiamento: { sub: "Participação do grupo nas receitas de campanha dos candidatos do partido." },
+    equidade: { sub: "Índice de equidade (DRI) do partido: participação do grupo comparada ao seu peso no eleitorado (mulheres) ou na população (pessoas negras)." },
+  };
+  let tokenPart = 0;
+
+  async function partidos() {
+    const el = $("#g-partidos"), dim = estado.pDim, eleitoral = dim !== "direcoes";
+    // mostra só os controles da dimensão
+    $("#p-nivel-l").hidden = eleitoral; $("#p-cargo-l").hidden = !eleitoral; $("#p-grupo").hidden = !eleitoral;
+    $("#p-medida-l").hidden = !(dim === "financiamento" || dim === "equidade");
+    const medOpts = dim === "financiamento" ? ["receitas", "receitas_publicas"] : ["candidaturas", "eleitos", "votos", "receitas", "receitas_publicas"];
+    if (!medOpts.includes(estado.pMedida)) estado.pMedida = medOpts[0];
+    opcoes($("#p-medida"), medOpts.map((m) => [m, MED_ROT[m][0].toUpperCase() + MED_ROT[m].slice(1)])); $("#p-medida").value = estado.pMedida;
+    const grupoTxt = estado.pGrupo === "mulheres" ? "Mulheres" : "Pessoas negras";
+
+    if (!eleitoral) {
+      const anos = [...new Set(DIR.map((r) => r.ano))].sort();
+      if (!anos.includes(estado.pAno)) estado.pAno = anos[anos.length - 1];
+      opcoes($("#p-ano"), anos.slice().reverse().map((a) => [a, a])); $("#p-ano").value = estado.pAno;
+      $("#p-sub").textContent = DIMS.direcoes.sub;
+      $("#p-nota").textContent = "Só aparecem partidos com pelo menos 20 membros no recorte. O partido escolhido no filtro fica destacado.";
+      const rows = filtra(DIR, { partido: false }).filter((r) => r.nivel === estado.pNivel && r.ano === estado.pAno);
+      const m = soma(rows, (r) => r.partido, ["mulheres", "membros"]);
+      const dados = [...m].filter(([, o]) => o.membros >= 20).map(([p, o]) => ({ p, v: o.mulheres / o.membros, n: o.membros, mu: o.mulheres })).sort((a, b) => b.v - a.v);
+      barras(el, dados, { detalhe: (d) => `<b>${esc(d.p)}</b>` + linhaTip("Mulheres", pct(d.v)) + linhaTip("Membros", `${int(d.mu)} de ${int(d.n)}`) });
+      return;
+    }
+
+    const meu = ++tokenPart;
+    try {
+      IND_MAPA ||= await json("dados/mapa/indice.json");
+      const anos = IND_MAPA[estado.pCargo] || [];
+      if (!anos.includes(estado.pAno)) estado.pAno = anos[anos.length - 1];
+      opcoes($("#p-ano"), anos.slice().reverse().map((a) => [a, a])); $("#p-ano").value = estado.pAno;
+      const municipal = estado.pCargo === "vereanca";
+      const [doc, nomes] = await Promise.all([json(`dados/mapa/${estado.pCargo}_${estado.pAno}.json`), municipal ? json("dados/geo/nomes.json") : null]);
+      if (meu !== tokenPart) return;
+      const ufDe = (d) => municipal ? (nomes[d] || "").slice(-3, -1) : d;
+      const med = dim === "candidaturas" || dim === "eleitos" ? DIMS[dim].medida : estado.pMedida;
+      const k = doc.medidas.indexOf(med), g = estado.pGrupo === "mulheres" ? 0 : 1;
+      // por partido: b = Σ b·T / Σ T e p = Σ p·T / Σ T (p do distrito ponderado pelo peso da lista)
+      const acc = new Map();
+      for (const l of doc.linhas) {
+        if (estado.uf && ufDe(l[0]) !== estado.uf) continue;
+        const p = doc.partidos[l[1]], T = l[2 + 3 * k], b = l[3 + 3 * k + g], ref = doc.distritos[l[0]]?.[g];
+        let o = acc.get(p); if (!o) acc.set(p, (o = { num: 0, den: 0, pnum: 0, cand: 0, listas: 0 }));
+        o.cand += l[2]; o.listas++;
+        if (b != null && ref != null && T > 0) { o.num += b * T; o.den += T; o.pnum += ref * T; }
+      }
+      const dados = [...acc].filter(([p, o]) => p !== "?" && o.cand >= 20 && o.den > 0).map(([p, o]) => {
+        const b = o.num / o.den, ref = o.pnum / o.den;
+        return { p, b, ref, v: dim === "equidade" ? dri(b, ref) : b, T: o.den, cand: o.cand, listas: o.listas };
+      }).sort((a, b) => b.v - a.v);
+      // referência geral (todas as listas): peso do grupo ponderado
+      const tot = dados.reduce((s, d) => ((s.r += d.ref * d.T), (s.t += d.T), s), { r: 0, t: 0 });
+      const refGeral = tot.t ? tot.r / tot.t : null;
+      const quem = estado.pGrupo === "mulheres" ? "eleitorado" : "população";
+      const fmtT = (v) => med === "receitas" || med === "receitas_publicas" ? "R$ " + int(v) : int(v);
+      $("#p-sub").textContent = `${DIMS[dim].sub} ${grupoTxt}, ${$("#p-cargo").selectedOptions[0].text.replace(/ \(.*\)/, "")}, ${estado.pAno}${estado.uf ? ", " + UFS_NOMES[estado.uf] : ""}${dim === "equidade" || dim === "financiamento" ? " (" + MED_ROT[med] + ")" : ""}.`;
+      $("#p-nota").textContent = (dim === "equidade"
+        ? "DRI: −1 = grupo ausente; 0 = paridade; 1 = grupo detém tudo. O peso de referência de cada partido é o do " + quem + " dos distritos onde ele lançou lista, ponderado pelo tamanho da lista. "
+        : `Linha tracejada: peso do grupo no ${quem} dos distritos (ponderado). `) +
+        "Só aparecem partidos com pelo menos 20 candidaturas no recorte." + (estado.pGrupo === "negros" && estado.pAno < 2014 ? " O TSE só informa cor/raça a partir de 2014." : "");
+      barras(el, dados, {
+        modo: dim === "equidade" ? "dri" : "pct", ref: dim === "equidade" ? null : refGeral, refRot: quem === "eleitorado" ? "Eleitorado" : "População",
+        detalhe: (d) => `<b>${esc(d.p)}</b>` + (dim === "equidade" ? linhaTip("DRI", `<strong>${fmtDri(d.v)}</strong>`) : "") +
+          linhaTip(`${grupoTxt} em ${MED_ROT[med]}`, pct(d.b)) + linhaTip(`No ${quem} (p)`, pct(d.ref)) +
+          linhaTip(MED_ROT[med][0].toUpperCase() + MED_ROT[med].slice(1), fmtT(d.T)) + linhaTip("Listas", int(d.listas)),
+      });
+    } catch (e) {
+      if (meu === tokenPart) el.innerHTML = `<p class="vazio">Não foi possível carregar os dados (${esc(e.message)}).</p>`;
+    }
   }
 
   /* ------------------------------------------------------------ 4. arquivos */

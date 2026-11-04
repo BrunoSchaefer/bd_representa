@@ -109,19 +109,36 @@
     <div class="cartao-cab">
       <div>
         <h2>Comparação entre partidos</h2>
-        <p class="sub">Percentual de mulheres nas direções, por partido.</p>
+        <p class="sub" id="p-sub">Percentual de mulheres nas direções partidárias.</p>
       </div>
-      <div class="controles">
-        <label>Nível <select id="p-nivel">
-          <option value="municipal">Municipal</option>
-          <option value="estadual">Estadual</option>
-          <option value="nacional">Nacional</option>
-        </select></label>
-        <label>Ano <select id="p-ano"></select></label>
+    </div>
+    <div class="segmentado p-dim" role="radiogroup" aria-label="Dimensão" id="p-dim">
+      <button data-v="direcoes" aria-pressed="true">Direção</button>
+      <button data-v="candidaturas">Candidaturas</button>
+      <button data-v="eleitos">Eleitos(as)</button>
+      <button data-v="financiamento">Financiamento</button>
+      <button data-v="equidade">Equidade (DRI)</button>
+    </div>
+    <div class="controles m-controles">
+      <label id="p-nivel-l">Nível <select id="p-nivel">
+        <option value="municipal">Municipal</option>
+        <option value="estadual">Estadual</option>
+        <option value="nacional">Nacional</option>
+      </select></label>
+      <label id="p-cargo-l" hidden>Cargo <select id="p-cargo">
+        <option value="vereanca">Vereança</option>
+        <option value="assembleia">Deputado(a) estadual/distrital</option>
+        <option value="camara">Deputado(a) federal</option>
+      </select></label>
+      <label>Ano <select id="p-ano"></select></label>
+      <label id="p-medida-l" hidden>Medida <select id="p-medida"></select></label>
+      <div class="segmentado" role="radiogroup" aria-label="Grupo" id="p-grupo" hidden>
+        <button data-v="mulheres" aria-pressed="true">Mulheres</button>
+        <button data-v="negros">Pessoas negras</button>
       </div>
     </div>
     <div class="grafico" id="g-partidos"></div>
-    <p class="nota">Só aparecem partidos com pelo menos 20 membros no recorte. O partido escolhido no filtro fica destacado.</p>
+    <p class="nota" id="p-nota">Só aparecem partidos com pelo menos 20 membros no recorte. O partido escolhido no filtro fica destacado.</p>
   </section>
 
   <section id="baixar" class="cartao">

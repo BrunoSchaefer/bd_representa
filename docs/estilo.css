@@ -30,6 +30,8 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
+.p-dim { margin-top: 12px; }
 html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0; background: var(--bg); color: var(--text);
