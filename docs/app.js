@@ -1,5 +1,8 @@
 /* bd_representa — página de visualização (sem dependências) */
 (() => {
+  // versão da página (carimbada em index.html por ferramentas/versionar_site.py): evita dados em cache
+  const VERSAO = (document.currentScript && document.currentScript.dataset.versao) || "";
+  const comV = (u) => (VERSAO ? u + (u.includes("?") ? "&" : "?") + "v=" + VERSAO : u);
   const REPO = "https://github.com/BrunoSchaefer/bd_representa";
   const NIVEIS = [
     { k: "nacional", rotulo: "Nacional", cor: "--s1" },
@@ -28,7 +31,7 @@
 
   const objetos = (j) => j.linhas.map((l) => Object.fromEntries(j.colunas.map((c, i) => [c, l[i]])));
 
-  Promise.all(["dados/direcoes.json", "dados/candidaturas.json", "dados/arquivos.json"].map((u) => fetch(u).then((r) => r.json())))
+  Promise.all(["dados/direcoes.json", "dados/candidaturas.json", "dados/arquivos.json"].map((u) => fetch(comV(u)).then((r) => r.json())))
     .then(([d, c, a]) => { DIR = objetos(d); CAND = objetos(c); ARQ = a; iniciar(); })
     .catch((e) => { document.querySelector("main").insertAdjacentHTML("afterbegin", `<p class="vazio">Não foi possível carregar os dados (${esc(e.message)}).</p>`); });
 
@@ -284,7 +287,7 @@
   const fmtDri = (v) => v == null ? "–" : v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2, signDisplay: "exceptZero" });
   const MED_ROT = { candidaturas: "candidaturas", eleitos: "eleitos(as)", votos: "votos nominais", receitas: "receitas", receitas_publicas: "recursos públicos" };
   const cache = {};
-  const json = (u) => (cache[u] ||= fetch(u).then((r) => { if (!r.ok) throw new Error(r.status + " " + u); return r.json(); }));
+  const json = (u) => (cache[u] ||= fetch(comV(u)).then((r) => { if (!r.ok) throw new Error(r.status + " " + u); return r.json(); }));
   let IND_MAPA = null, tokenMapa = 0;
 
   async function mapa() {
