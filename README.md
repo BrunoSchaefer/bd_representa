@@ -26,7 +26,7 @@ Pesquisa: *Desigualdade de Gênero e Partidos* — Bruno Schaefer (IESP-UERJ, [M
 A [página pública](https://brunoschaefer.github.io/bd_representa/) traz:
 
 - **Direções partidárias:** mulheres nas direções nacional, estadual e municipal (2015–2025).
-- **Diretórios partidários:** número de diretórios por ano e esfera (nacional, estadual, municipal) e por tipo de órgão (definitivo, provisório, comissão interventora); tipo de órgão por partido; e mapa do percentual de mulheres na presidência (ou na presidência e tesouraria) dos diretórios, por UF ou município, partido e ano.
+- **Diretórios partidários:** número de diretórios por ano e esfera (nacional, estadual, municipal) e por tipo de órgão (definitivo, provisório, comissão interventora); tipo de órgão por partido; e mapa do percentual de mulheres entre todos os membros, na presidência ou na presidência e tesouraria dos diretórios, por UF ou município, partido e ano.
 - **Candidaturas e eleição:** mulheres e pessoas negras entre candidaturas e eleitos, por cargo.
 - **Mapa da equidade nas listas partidárias:** o índice DRI por município (vereança) ou UF (deputado estadual/distrital e federal), por ano, grupo (mulheres ou pessoas negras) e medida (candidaturas, eleitos, votos, receitas, recursos públicos), para todas as listas ou para um partido.
 - **Comparação entre partidos** e **downloads**.
