@@ -1,0 +1,645 @@
+{
+ "partidos": [
+  "AGIR",
+  "AVANTE",
+  "CIDADANIA",
+  "DC",
+  "DEM",
+  "DEMOCRATA",
+  "MDB",
+  "MISSAO",
+  "MOBILIZA",
+  "NOVO",
+  "PATRIOTA",
+  "PCB",
+  "PCDOB",
+  "PCO",
+  "PDT",
+  "PHS",
+  "PL",
+  "PMB",
+  "PODE",
+  "PP",
+  "PPL",
+  "PRD",
+  "PROS",
+  "PRP",
+  "PRTB",
+  "PSB",
+  "PSC",
+  "PSD",
+  "PSDB",
+  "PSL",
+  "PSOL",
+  "PSTU",
+  "PT",
+  "PTB",
+  "PV",
+  "REDE",
+  "REPUBLICANOS",
+  "SOLIDARIEDADE",
+  "UNIAO",
+  "UP",
+  "?"
+ ],
+ "ufs": [
+  "AC",
+  "AL",
+  "AM",
+  "AP",
+  "BA",
+  "CE",
+  "DF",
+  "ES",
+  "GO",
+  "MA",
+  "MG",
+  "MS",
+  "MT",
+  "PA",
+  "PB",
+  "PE",
+  "PI",
+  "PR",
+  "RJ",
+  "RN",
+  "RO",
+  "RR",
+  "RS",
+  "SC",
+  "SE",
+  "SP",
+  "TO",
+  "BR"
+ ],
+ "relacoes": [
+  {
+   "id": "r31",
+   "analise": "3.1",
+   "titulo": "Votação do partido e mulheres na direção",
+   "pergunta": "Partidos com mais votos no distrito têm mais mulheres na direção?",
+   "unidade": "diretório (partido no distrito, no ano)",
+   "variaveis": {
+    "votos_ant": {
+     "rot": "Votação nominal da lista na eleição anterior (% do distrito)",
+     "tipo": "pct"
+    },
+    "membros": {
+     "rot": "Membros da direção",
+     "tipo": "n"
+    },
+    "prop_mulheres": {
+     "rot": "Mulheres na direção (%)",
+     "tipo": "pct"
+    },
+    "prop_decisao": {
+     "rot": "Mulheres em cargos de decisão (%)",
+     "tipo": "pct"
+    },
+    "mulher_pres": {
+     "rot": "Mulher na presidência (0/1)",
+     "tipo": "bin"
+    },
+    "mulher_tes": {
+     "rot": "Mulher na tesouraria (0/1)",
+     "tipo": "bin"
+    }
+   },
+   "x": "votos_ant",
+   "y": "prop_mulheres",
+   "nota": "A votação é a da eleição anterior ao ano da direção (vereança para os diretórios municipais; Assembleia para os estaduais). Partido sem lista na eleição anterior = 0%.",
+   "recortes": [
+    {
+     "id": "municipal",
+     "rot": "Diretórios municipais × vereança",
+     "por_ano": true,
+     "anos": [
+      2015,
+      2016,
+      2017,
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025
+     ],
+     "n": {
+      "2015": 64061,
+      "2016": 95571,
+      "2017": 88530,
+      "2018": 67508,
+      "2019": 63497,
+      "2020": 73957,
+      "2021": 62391,
+      "2022": 47928,
+      "2023": 45021,
+      "2024": 62761,
+      "2025": 49325
+     }
+    },
+    {
+     "id": "estadual",
+     "rot": "Diretórios estaduais × Assembleia",
+     "anos": [
+      2015,
+      2016,
+      2017,
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025
+     ],
+     "n": 7277
+    }
+   ]
+  },
+  {
+   "id": "r32",
+   "analise": "3.2",
+   "titulo": "Mulher na direção e recursos para candidatas",
+   "pergunta": "Listas de partidos com mulher na direção destinam mais recursos às candidatas?",
+   "unidade": "lista partidária (partido no distrito, na eleição)",
+   "variaveis": {
+    "mulher_pres_ant": {
+     "rot": "Mulher na presidência do diretório no ano anterior (0/1)",
+     "tipo": "bin"
+    },
+    "mulher_dec_ant": {
+     "rot": "Mulher em cargo de decisão do diretório no ano anterior (0/1)",
+     "tipo": "bin"
+    },
+    "cand_m": {
+     "rot": "Mulheres entre as candidaturas da lista (%)",
+     "tipo": "pct"
+    },
+    "rec_m": {
+     "rot": "Receitas da lista destinadas a mulheres (%)",
+     "tipo": "pct"
+    },
+    "rec_part_m": {
+     "rot": "Recursos de partidos destinados a mulheres (%)",
+     "tipo": "pct"
+    },
+    "rec_dir_m": {
+     "rot": "Recursos de direções destinados a mulheres (%)",
+     "tipo": "pct"
+    }
+   },
+   "x": "mulher_pres_ant",
+   "y": "rec_m",
+   "controle": "cand_m",
+   "nota": "Direção medida no ano anterior à eleição (2015→2016 … 2023→2024). Os diretórios começam em 2015, então as eleições são 2016–2024 (municipais) e 2018–2022 (gerais).",
+   "recortes": [
+    {
+     "id": "vereanca",
+     "rot": "Vereança (diretórios municipais)",
+     "por_ano": true,
+     "anos": [
+      2016,
+      2020,
+      2024
+     ],
+     "n": {
+      "2016": 45460,
+      "2020": 30584,
+      "2024": 27354
+     }
+    },
+    {
+     "id": "assembleia",
+     "rot": "Dep. estadual/distrital (diretórios estaduais)",
+     "anos": [
+      2018,
+      2022
+     ],
+     "n": 1256
+    },
+    {
+     "id": "camara",
+     "rot": "Dep. federal (diretórios estaduais)",
+     "anos": [
+      2018,
+      2022
+     ],
+     "n": 1300
+    }
+   ]
+  },
+  {
+   "id": "r33",
+   "analise": "3.3",
+   "titulo": "PIB per capita e índices de equidade",
+   "pergunta": "Distritos mais ricos têm listas e bancadas mais igualitárias?",
+   "unidade": "distrito (município ou UF, na eleição)",
+   "variaveis": {
+    "log_pib": {
+     "rot": "log do PIB per capita",
+     "tipo": "n"
+    },
+    "pib_mil": {
+     "rot": "PIB per capita (R$ mil de dez/2025)",
+     "tipo": "n"
+    },
+    "g_candidatos": {
+     "rot": "DRI de gênero (mulheres): candidaturas",
+     "tipo": "dri"
+    },
+    "g_receitas": {
+     "rot": "DRI de gênero (mulheres): receitas",
+     "tipo": "dri"
+    },
+    "g_receitas_partidarias": {
+     "rot": "DRI de gênero (mulheres): receitas partidárias",
+     "tipo": "dri"
+    },
+    "g_eleitos": {
+     "rot": "DRI de gênero (mulheres): eleitos",
+     "tipo": "dri"
+    },
+    "r_candidatos": {
+     "rot": "DRI de raça (pessoas negras): candidaturas",
+     "tipo": "dri"
+    },
+    "r_receitas": {
+     "rot": "DRI de raça (pessoas negras): receitas",
+     "tipo": "dri"
+    },
+    "r_receitas_partidarias": {
+     "rot": "DRI de raça (pessoas negras): receitas partidárias",
+     "tipo": "dri"
+    },
+    "r_eleitos": {
+     "rot": "DRI de raça (pessoas negras): eleitos",
+     "tipo": "dri"
+    }
+   },
+   "x": "log_pib",
+   "y": "g_eleitos",
+   "nota": "DRI: −1 = grupo ausente; 0 = paridade com o eleitorado (gênero) ou a população (raça). O PIB municipal só vai até 2023 (eleições até 2020).",
+   "recortes": [
+    {
+     "id": "vereanca",
+     "rot": "Municípios (vereança)",
+     "anos": [
+      2012,
+      2016,
+      2020,
+      2024
+     ],
+     "n": 22271
+    },
+    {
+     "id": "assembleia",
+     "rot": "UFs (Assembleia)",
+     "anos": [
+      2010,
+      2014,
+      2018,
+      2022,
+      2026
+     ],
+     "n": 135
+    },
+    {
+     "id": "camara",
+     "rot": "UFs (Câmara)",
+     "anos": [
+      2010,
+      2014,
+      2018,
+      2022,
+      2026
+     ],
+     "n": 135
+    }
+   ]
+  },
+  {
+   "id": "rfg",
+   "analise": "F e G",
+   "titulo": "Classificações de ideologia e de democracia interna",
+   "pergunta": "As classificações da literatura concordam entre si?",
+   "unidade": "partido-ano (direção nacional)",
+   "variaveis": {
+    "bls": {
+     "rot": "Ideologia BLS (−1 esquerda a 1 direita)",
+     "tipo": "n"
+    },
+    "bolognesi": {
+     "rot": "Ideologia Bolognesi et al. (0 a 10)",
+     "tipo": "n"
+    },
+    "salgado": {
+     "rot": "Democracia interna (Salgado)",
+     "tipo": "n"
+    },
+    "ribeiro": {
+     "rot": "IPD (Ribeiro, Locatelli e Assis)",
+     "tipo": "n"
+    }
+   },
+   "x": "bls",
+   "y": "bolognesi",
+   "nota": "As classificações são atribuídas a cada ano pela onda mais recente; partidos repetem-se entre anos.",
+   "recortes": [
+    {
+     "id": "nacional",
+     "rot": "Partidos (direção nacional)",
+     "anos": [
+      2015,
+      2016,
+      2017,
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025
+     ],
+     "n": 336
+    }
+   ]
+  },
+  {
+   "id": "rl",
+   "analise": "L",
+   "titulo": "Ideologia e composição das despesas partidárias",
+   "pergunta": "Partidos à direita ou à esquerda gastam de forma diferente?",
+   "unidade": "partido-ano (soma dos órgãos da esfera)",
+   "variaveis": {
+    "bls": {
+     "rot": "Ideologia BLS (−1 esquerda a 1 direita)",
+     "tipo": "n"
+    },
+    "pct_aparato": {
+     "rot": "Despesas com aparato (%)",
+     "tipo": "pct"
+    },
+    "pct_pessoal": {
+     "rot": "Despesas com pessoal (%)",
+     "tipo": "pct"
+    },
+    "pct_eleicoes": {
+     "rot": "Despesas com eleições: comunicação e publicidade (%)",
+     "tipo": "pct"
+    },
+    "pct_transferencias": {
+     "rot": "Transferências (%)",
+     "tipo": "pct"
+    },
+    "desp_mi": {
+     "rot": "Despesas totais (R$ milhões de dez/2025)",
+     "tipo": "n"
+    }
+   },
+   "x": "bls",
+   "y": "pct_aparato",
+   "nota": "Despesas de 2017 a 2025, somadas por partido em cada esfera; ideologia nacional do partido no ano.",
+   "recortes": [
+    {
+     "id": "nacional",
+     "rot": "Esfera nacional",
+     "anos": [
+      2017,
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025
+     ],
+     "n": 280
+    },
+    {
+     "id": "estadual",
+     "rot": "Esfera estadual",
+     "anos": [
+      2017,
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025
+     ],
+     "n": 274
+    },
+    {
+     "id": "municipal",
+     "rot": "Esfera municipal",
+     "anos": [
+      2017,
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025
+     ],
+     "n": 273
+    }
+   ]
+  },
+  {
+   "id": "rno",
+   "analise": "N e O",
+   "titulo": "Bancada eleita e recursos da direção partidária",
+   "pergunta": "Partidos que elegem mais têm diretórios com mais recursos no distrito?",
+   "unidade": "lista partidária (partido no distrito, na eleição)",
+   "variaveis": {
+    "pct_cadeiras": {
+     "rot": "Cadeiras do distrito obtidas pelo partido (%)",
+     "tipo": "pct"
+    },
+    "pct_votos": {
+     "rot": "Votos nominais do partido no distrito (%)",
+     "tipo": "pct"
+    },
+    "pct_recursos": {
+     "rot": "Parcela das receitas dos diretórios do distrito (%)",
+     "tipo": "pct"
+    }
+   },
+   "x": "pct_cadeiras",
+   "y": "pct_recursos",
+   "diagonal": true,
+   "nota": "Receitas do diretório no ano da eleição (financiamento partidário a partir de 2017). Linha tracejada: proporcionalidade.",
+   "recortes": [
+    {
+     "id": "vereanca",
+     "rot": "Vereança (municípios)",
+     "por_ano": true,
+     "anos": [
+      2020,
+      2024
+     ],
+     "n": {
+      "2020": 29342,
+      "2024": 23345
+     }
+    },
+    {
+     "id": "assembleia",
+     "rot": "Assembleia (UFs)",
+     "anos": [
+      2018,
+      2022
+     ],
+     "n": 1290
+    }
+   ]
+  },
+  {
+   "id": "rq",
+   "analise": "Q",
+   "titulo": "Gasto com internet e votação",
+   "pergunta": "Quem concentra o gasto com internet do distrito tem mais votos?",
+   "unidade": "candidatura",
+   "variaveis": {
+    "pct_internet": {
+     "rot": "Parcela do gasto com internet do distrito (%)",
+     "tipo": "pct"
+    },
+    "pct_votos": {
+     "rot": "Votos no distrito (%)",
+     "tipo": "pct"
+    },
+    "internet_mil": {
+     "rot": "Gasto com internet (R$ mil de dez/2025)",
+     "tipo": "n"
+    }
+   },
+   "x": "pct_internet",
+   "y": "pct_votos",
+   "nota": "Só distritos com algum gasto com internet. A vereança (1,75 milhão de candidaturas) fica fora da página pelo volume; o código gerado funciona também para ela.",
+   "recortes": [
+    {
+     "id": "camara",
+     "rot": "Dep. federal",
+     "anos": [
+      2018,
+      2022,
+      2026
+     ],
+     "n": 24134
+    },
+    {
+     "id": "assembleia",
+     "rot": "Dep. estadual/distrital",
+     "anos": [
+      2018,
+      2022,
+      2026
+     ],
+     "n": 43578
+    },
+    {
+     "id": "senado",
+     "rot": "Senado",
+     "anos": [
+      2018,
+      2022,
+      2026
+     ],
+     "n": 787
+    },
+    {
+     "id": "governadoria",
+     "rot": "Governo estadual",
+     "anos": [
+      2018,
+      2022,
+      2026
+     ],
+     "n": 554
+    },
+    {
+     "id": "prefeitura",
+     "rot": "Prefeitura",
+     "por_ano": true,
+     "anos": [
+      2020,
+      2024
+     ],
+     "n": {
+      "2020": 10913,
+      "2024": 9227
+     }
+    }
+   ]
+  },
+  {
+   "id": "rs",
+   "analise": "S",
+   "titulo": "Desempenho eleitoral e rotatividade da direção",
+   "pergunta": "Direções de partidos que não elegeram ninguém se renovam mais no ano seguinte?",
+   "unidade": "diretório (partido no distrito, no ano seguinte à eleição)",
+   "variaveis": {
+    "sem_eleitos": {
+     "rot": "Não elegeu ninguém na eleição anterior (0/1)",
+     "tipo": "bin"
+    },
+    "n_eleitos": {
+     "rot": "Eleitos na eleição anterior",
+     "tipo": "n"
+    },
+    "turnover": {
+     "rot": "Rotatividade da direção (%)",
+     "tipo": "pct"
+    },
+    "turnover_dec": {
+     "rot": "Rotatividade dos cargos de decisão (%)",
+     "tipo": "pct"
+    },
+    "membros_t1": {
+     "rot": "Membros da direção no ano anterior",
+     "tipo": "n"
+    }
+   },
+   "x": "sem_eleitos",
+   "y": "turnover",
+   "nota": "Rotatividade = entradas e saídas sobre as pessoas presentes em algum dos dois anos. Municipal: vereança 2016, 2020, 2024 → direção 2017, 2021, 2025; estadual: Assembleia 2018, 2022 → direção 2019, 2023.",
+   "recortes": [
+    {
+     "id": "municipal",
+     "rot": "Diretórios municipais (após a vereança)",
+     "por_ano": true,
+     "anos": [
+      2017,
+      2021,
+      2025
+     ],
+     "n": {
+      "2017": 81498,
+      "2021": 60275,
+      "2025": 47813
+     }
+    },
+    {
+     "id": "estadual",
+     "rot": "Diretórios estaduais (após a Assembleia)",
+     "anos": [
+      2019,
+      2023
+     ],
+     "n": 1035
+    }
+   ]
+  }
+ ]
+}

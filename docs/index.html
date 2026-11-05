@@ -19,6 +19,7 @@
       <a href="#candidaturas">Candidaturas</a>
       <a href="#mapa">Mapa da equidade</a>
       <a href="#partidos">Partidos</a>
+      <a href="#relacoes">Relações</a>
       <a href="#baixar">Baixar os dados</a>
       <a href="https://github.com/BrunoSchaefer/bd_representa">Código no GitHub</a>
     </nav>
@@ -112,6 +113,7 @@
         <div class="legenda-div" id="md-legenda"></div>
       </aside>
     </div>
+    <p class="zoom-dica">Use + e − (ou Ctrl + roda do mouse) para ampliar; arraste o mapa para mover; ⟲ volta ao mapa inteiro.</p>
     <p class="nota" id="md-nota"></p>
     <details><summary>Ver tabela</summary><div id="t-mapa-dir" class="tabela-wrap"></div></details>
   </section>
@@ -168,6 +170,7 @@
         <div class="legenda-div" id="m-legenda"></div>
       </aside>
     </div>
+    <p class="zoom-dica">Use + e − (ou Ctrl + roda do mouse) para ampliar; arraste o mapa para mover; ⟲ volta ao mapa inteiro.</p>
     <p class="nota" id="m-nota"></p>
     <details><summary>Ver tabela</summary><div id="t-mapa" class="tabela-wrap"></div></details>
   </section>
@@ -206,6 +209,42 @@
     </div>
     <div class="grafico" id="g-partidos"></div>
     <p class="nota" id="p-nota">Só aparecem partidos com pelo menos 20 membros no recorte. O partido escolhido no filtro fica destacado.</p>
+  </section>
+
+  <section id="relacoes" class="cartao">
+    <div class="cartao-cab">
+      <div>
+        <h2>Relações</h2>
+        <p class="sub">Teste relações da Análise Exploratória: escolha a relação, o recorte e as variáveis. Os filtros de partido e UF do topo também valem aqui.</p>
+      </div>
+    </div>
+    <div class="controles m-controles">
+      <label>Relação <select id="r-rel"></select></label>
+    </div>
+    <p class="r-pergunta" id="r-pergunta"></p>
+    <div class="controles m-controles">
+      <label>Recorte <select id="r-recorte"></select></label>
+      <label>Ano <select id="r-ano"></select></label>
+      <label>X <select id="r-x"></select></label>
+      <label>Y <select id="r-y"></select></label>
+    </div>
+    <div class="r-corpo">
+      <div class="grafico r-grafico" id="g-relacao"><p class="vazio">Carregando…</p></div>
+      <aside class="r-stats" id="r-stats"></aside>
+    </div>
+    <p class="nota" id="r-nota"></p>
+    <div class="r-codigo">
+      <button type="button" class="botao" id="r-codigo-btn" aria-expanded="false">&lt;/&gt; Pegar o código</button>
+      <div id="r-codigo" hidden>
+        <p class="nota">Script em R que baixa os bancos da release, monta a base como na Análise Exploratória, aplica os filtros escolhidos e refaz os testes e o gráfico. Requer os pacotes <code>data.table</code>, <code>R.utils</code> e <code>ggplot2</code>.</p>
+        <div class="r-codigo-acoes">
+          <button type="button" class="botao" id="r-copiar">Copiar</button>
+          <button type="button" class="botao" id="r-baixar">Baixar .R</button>
+          <span class="dica" id="r-copiado" role="status"></span>
+        </div>
+        <pre class="codigo" id="r-codigo-txt"></pre>
+      </div>
+    </div>
   </section>
 
   <section id="baixar" class="cartao">

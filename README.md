@@ -30,6 +30,9 @@ A [página pública](https://brunoschaefer.github.io/bd_representa/) traz:
 - **Candidaturas e eleição:** mulheres e pessoas negras entre candidaturas e eleitos, por cargo.
 - **Mapa da equidade nas listas partidárias:** o índice DRI por município (vereança) ou UF (deputado estadual/distrital e federal), por ano, grupo (mulheres ou pessoas negras) e medida (candidaturas, eleitos, votos, receitas, recursos públicos), para todas as listas ou para um partido.
 - **Comparação entre partidos** e **downloads**.
+- **Relações:** teste interativo de oito relações da Análise Exploratória (votação e mulheres na direção; mulher na direção e recursos para candidatas; PIB per capita e equidade; classificações de ideologia e de democracia interna; ideologia e despesas partidárias; bancada eleita e recursos da direção; gasto com internet e votos; desempenho eleitoral e rotatividade). Para cada recorte, a página mostra a dispersão (ou a comparação de médias, quando X é binário), as correlações de Pearson e Spearman, a regressão linear e as médias por décimo de X. O botão **“Pegar o código”** gera um script em R que baixa os bancos da release, monta a mesma base e refaz os testes e o gráfico.
+
+Os mapas têm zoom: botões + e −, Ctrl + roda do mouse e arrastar para mover.
 
 O DRI vale `(b − p) / √((b − p)² + b(1 − b))`, em que *b* é a participação do grupo e *p* o seu peso no eleitorado (gênero) ou na população (raça). Vai de −1 (grupo ausente) a 1, e 0 indica paridade.
 

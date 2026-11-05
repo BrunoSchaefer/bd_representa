@@ -22,7 +22,8 @@
   const estado = { partido: "", uf: "", dMetrica: "membros", cCargo: "Vereança", cGrupo: "mulheres", pNivel: "municipal", pAno: null, aGrupo: "finais",
                    mCargo: "vereanca", mAno: null, mMedida: "candidaturas", mGrupo: "mulheres",
                    pDim: "direcoes", pCargo: "vereanca", pMedida: "receitas", pGrupo: "mulheres",
-                   dtEscala: "abs", tpNivel: "municipal", tpAno: null, mdNivel: "municipal", mdAno: null, mdCargo: "presidencia" };
+                   dtEscala: "abs", tpNivel: "municipal", tpAno: null, mdNivel: "municipal", mdAno: null, mdCargo: "presidencia",
+                   rRel: "r31", rRecorte: null, rAno: null, rX: null, rY: null };
   let DIR = [], CAND = [], ARQ = [];
 
   const objetos = (j) => j.linhas.map((l) => Object.fromEntries(j.colunas.map((c, i) => [c, l[i]])));
@@ -66,6 +67,11 @@
     segmentado("#m-grupo", "mGrupo");
     segmentado("#p-dim", "pDim");
     segmentado("#dt-escala", "dtEscala");
+    $("#r-rel").onchange = (e) => { estado.rRel = e.target.value; estado.rRecorte = estado.rX = estado.rY = estado.rAno = null; relacoes(); };
+    $("#r-recorte").onchange = (e) => { estado.rRecorte = e.target.value; estado.rAno = null; relacoes(); };
+    $("#r-ano").onchange = (e) => { estado.rAno = e.target.value === "todos" ? "todos" : +e.target.value; relacoes(); };
+    $("#r-x").onchange = (e) => { estado.rX = e.target.value; if (estado.rY === estado.rX) estado.rY = null; relacoes(); };
+    $("#r-y").onchange = (e) => { estado.rY = e.target.value; relacoes(); };
     segmentado("#md-cargo", "mdCargo");
     $("#tp-nivel").onchange = (e) => { estado.tpNivel = e.target.value; desenhar(); };
     $("#tp-ano").onchange = (e) => { estado.tpAno = +e.target.value; desenhar(); };
@@ -98,7 +104,7 @@
   function desenhar() {
     const rec = [estado.partido || "todos os partidos", estado.uf ? UFS_NOMES[estado.uf] : "Brasil"].join(" · ");
     $("#f-resumo").textContent = `Mostrando: ${rec}`;
-    destaques(); direcoes(); diretorios(); candidaturas(); mapa(); partidos(); arquivos();
+    destaques(); direcoes(); diretorios(); candidaturas(); mapa(); partidos(); relacoes(); arquivos();
   }
 
   /* ------------------------------------------------------------ destaques */
@@ -210,6 +216,62 @@
     linhas($("#g-candidaturas"), { series, xs, tabela: $("#t-candidaturas") });
   }
 
+
+  /* ------------------------------------------------------------ zoom dos mapas */
+  // Botões +/−/⟲, arrastar (quando ampliado), Ctrl+roda e duplo clique.
+  // O zoom é mantido entre redesenhos enquanto a área base (viewBox) não muda.
+  function ativarZoom(el) {
+    const svg = el.querySelector("svg"); if (!svg) return;
+    const base = svg.getAttribute("viewBox").split(" ").map(Number);
+    const chave = base.map((v) => Math.round(v)).join(",");
+    if (!el._zoom || el._zoom.chave !== chave) el._zoom = { chave, vb: base.slice() };
+    const z = el._zoom, MAX = 40;
+    const aplicar = () => {
+      svg.setAttribute("viewBox", z.vb.join(" "));
+      const ampliado = z.vb[2] < base[2] - 1e-6;
+      svg.style.cursor = ampliado ? "grab" : "";
+      svg.style.touchAction = ampliado ? "none" : "";
+      ctl.querySelector("[data-z=menos]").disabled = !ampliado;
+      ctl.querySelector("[data-z=reset]").disabled = !ampliado;
+    };
+    const limitar = () => {
+      z.vb[2] = Math.min(base[2], Math.max(base[2] / MAX, z.vb[2]));
+      z.vb[3] = z.vb[2] * base[3] / base[2];
+      z.vb[0] = Math.min(base[0] + base[2] - z.vb[2], Math.max(base[0], z.vb[0]));
+      z.vb[1] = Math.min(base[1] + base[3] - z.vb[3], Math.max(base[1], z.vb[1]));
+    };
+    const zoomEm = (f, cx, cy) => { // f > 1 amplia; (cx, cy) em coordenadas do mapa
+      if (cx == null) { cx = z.vb[0] + z.vb[2] / 2; cy = z.vb[1] + z.vb[3] / 2; }
+      const w = z.vb[2] / f, h = z.vb[3] / f;
+      z.vb = [cx - (cx - z.vb[0]) / f, cy - (cy - z.vb[1]) / f, w, h]; limitar(); aplicar();
+    };
+    const ponto = (ev) => { const r = svg.getBoundingClientRect();
+      return [z.vb[0] + (ev.clientX - r.left) / r.width * z.vb[2], z.vb[1] + (ev.clientY - r.top) / r.height * z.vb[3]]; };
+    let ctl = el.querySelector(".zoom-ctl");
+    if (!ctl) {
+      ctl = document.createElement("div"); ctl.className = "zoom-ctl";
+      ctl.innerHTML = `<button type="button" data-z="mais" aria-label="Ampliar" title="Ampliar">+</button>` +
+        `<button type="button" data-z="menos" aria-label="Reduzir" title="Reduzir">−</button>` +
+        `<button type="button" data-z="reset" aria-label="Voltar ao mapa inteiro" title="Voltar ao mapa inteiro">⟲</button>`;
+      el.appendChild(ctl);
+    }
+    ctl.onclick = (ev) => { const b = ev.target.closest("button"); if (!b) return;
+      if (b.dataset.z === "mais") zoomEm(2); else if (b.dataset.z === "menos") zoomEm(0.5); else { z.vb = base.slice(); aplicar(); } };
+    svg.addEventListener("wheel", (ev) => { if (!ev.ctrlKey && !ev.metaKey) return; ev.preventDefault();
+      const [cx, cy] = ponto(ev); zoomEm(ev.deltaY < 0 ? 1.4 : 1 / 1.4, cx, cy); }, { passive: false });
+    svg.addEventListener("dblclick", (ev) => { ev.preventDefault(); const [cx, cy] = ponto(ev); zoomEm(2, cx, cy); });
+    let arr = null;
+    svg.addEventListener("pointerdown", (ev) => { if (z.vb[2] >= base[2] - 1e-6) return;
+      arr = { x: ev.clientX, y: ev.clientY, vb: z.vb.slice(), mov: false }; svg.setPointerCapture(ev.pointerId); });
+    svg.addEventListener("pointermove", (ev) => { if (!arr) return; const r = svg.getBoundingClientRect();
+      const dx = (ev.clientX - arr.x) / r.width * z.vb[2], dy = (ev.clientY - arr.y) / r.height * z.vb[3];
+      if (Math.abs(ev.clientX - arr.x) + Math.abs(ev.clientY - arr.y) > 3) arr.mov = true;
+      z.vb[0] = arr.vb[0] - dx; z.vb[1] = arr.vb[1] - dy; limitar(); aplicar(); svg.style.cursor = "grabbing"; $("#tooltip").hidden = true; });
+    const soltar = () => { arr = null; aplicar(); };
+    svg.addEventListener("pointerup", soltar); svg.addEventListener("pointercancel", soltar);
+    aplicar();
+  }
+
   /* ------------------------------------------------------------ mapa da equidade */
   const FAIXAS = [ // [limite superior, token de cor, rótulo]
     [-0.6, "--div-n4", "−1 a −0,6"], [-0.35, "--div-n3", "−0,6 a −0,35"], [-0.15, "--div-n2", "−0,35 a −0,15"],
@@ -276,6 +338,7 @@
         }
       }
       el.innerHTML = s + `</svg>`;
+      ativarZoom(el);
 
       // tooltip
       const tip = $("#tooltip"), svg = el.querySelector("svg");
@@ -482,6 +545,7 @@
       }
       if (municipal) for (const [uf, path] of Object.entries(geoUf.ufs)) if (!estado.uf || uf === estado.uf) s += `<path class="uf" d="${path}"/>`;
       el.innerHTML = s + `</svg>`;
+      ativarZoom(el);
       const svg = el.querySelector("svg"), cargoTxt = { membros: "entre os membros", presidencia: "na presidência", decisao: "na presidência e tesouraria" }[cg],
             unidCargo = cg === "membros" ? "membros" : "cargos";
       svg.addEventListener("pointermove", (ev) => {
@@ -516,6 +580,404 @@
       if (meu === tokenMD) el.innerHTML = `<p class="vazio">Não foi possível carregar o mapa (${esc(e.message)}).</p>`;
     }
   }
+
+  /* ------------------------------------------------------------ relações */
+  // Estatística (sem dependências): Pearson, Spearman, MQO e teste t de Welch.
+  function betacf(a, b, x) {
+    let qab = a + b, qap = a + 1, qam = a - 1, c = 1, d = 1 - qab * x / qap;
+    if (Math.abs(d) < 1e-30) d = 1e-30; d = 1 / d; let h = d;
+    for (let m = 1; m <= 300; m++) {
+      const m2 = 2 * m; let aa = m * (b - m) * x / ((qam + m2) * (a + m2));
+      d = 1 + aa * d; if (Math.abs(d) < 1e-30) d = 1e-30; c = 1 + aa / c; if (Math.abs(c) < 1e-30) c = 1e-30;
+      d = 1 / d; h *= d * c;
+      aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
+      d = 1 + aa * d; if (Math.abs(d) < 1e-30) d = 1e-30; c = 1 + aa / c; if (Math.abs(c) < 1e-30) c = 1e-30;
+      d = 1 / d; const del = d * c; h *= del; if (Math.abs(del - 1) < 3e-12) break;
+    }
+    return h;
+  }
+  function lgamma(z) { // Lanczos
+    const g = [676.5203681218851, -1259.1392167224028, 771.32342877765313, -176.61502916214059, 12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
+    if (z < 0.5) return Math.log(Math.PI / Math.sin(Math.PI * z)) - lgamma(1 - z);
+    z -= 1; let x = 0.99999999999980993; for (let i = 0; i < 8; i++) x += g[i] / (z + i + 1);
+    const t = z + 7.5; return 0.5 * Math.log(2 * Math.PI) + (z + 0.5) * Math.log(t) - t + Math.log(x);
+  }
+  function ibeta(x, a, b) {
+    if (x <= 0) return 0; if (x >= 1) return 1;
+    const bt = Math.exp(lgamma(a + b) - lgamma(a) - lgamma(b) + a * Math.log(x) + b * Math.log(1 - x));
+    return x < (a + 1) / (a + b + 2) ? bt * betacf(a, b, x) / a : 1 - bt * betacf(b, a, 1 - x) / b;
+  }
+  const pT = (t, df) => (!isFinite(t) || df <= 0) ? NaN : ibeta(df / (df + t * t), df / 2, 0.5); // bicaudal
+  function ranks(v) {
+    const idx = v.map((x, i) => i).sort((a, b) => v[a] - v[b]), r = new Float64Array(v.length);
+    for (let i = 0; i < idx.length;) { let j = i; while (j + 1 < idx.length && v[idx[j + 1]] === v[idx[i]]) j++;
+      const m = (i + j) / 2 + 1; for (let k = i; k <= j; k++) r[idx[k]] = m; i = j + 1; }
+    return r;
+  }
+  function pearson(x, y) {
+    const n = x.length; let mx = 0, my = 0; for (let i = 0; i < n; i++) { mx += x[i]; my += y[i]; } mx /= n; my /= n;
+    let sxy = 0, sxx = 0, syy = 0; for (let i = 0; i < n; i++) { const a = x[i] - mx, b = y[i] - my; sxy += a * b; sxx += a * a; syy += b * b; }
+    return { r: sxy / Math.sqrt(sxx * syy), b: sxy / sxx, a: my - (sxy / sxx) * mx, sxx, syy, sxy, mx, my };
+  }
+  function estatisticas(x, y) {
+    const n = x.length; if (n < 3) return { n };
+    const P = pearson(x, y), r = P.r, df = n - 2;
+    const t = r * Math.sqrt(df / Math.max(1e-300, 1 - r * r));
+    const sse = P.syy - P.b * P.sxy, se = Math.sqrt(Math.max(0, sse) / df / P.sxx);
+    const rs = n <= 200000 ? pearson(Array.from(ranks(x)), Array.from(ranks(y))).r : NaN;
+    const ts = rs * Math.sqrt(df / Math.max(1e-300, 1 - rs * rs));
+    return { n, r, p: pT(t, df), rs, ps: pT(ts, df), b: P.b, a: P.a, se, r2: r * r };
+  }
+  function welch(y0, y1) {
+    const m = (v) => v.reduce((s, x) => s + x, 0) / v.length, va = (v, mu) => v.reduce((s, x) => s + (x - mu) ** 2, 0) / (v.length - 1);
+    const m0 = m(y0), m1 = m(y1), v0 = va(y0, m0), v1 = va(y1, m1), e0 = v0 / y0.length, e1 = v1 / y1.length;
+    const t = (m1 - m0) / Math.sqrt(e0 + e1), df = (e0 + e1) ** 2 / (e0 ** 2 / (y0.length - 1) + e1 ** 2 / (y1.length - 1));
+    return { m0, m1, n0: y0.length, n1: y1.length, dif: m1 - m0, t, df, p: pT(t, df), ic0: 1.96 * Math.sqrt(e0), ic1: 1.96 * Math.sqrt(e1), se: Math.sqrt(e0 + e1) };
+  }
+  const fmtN = (v, d = 2) => v == null || !isFinite(v) ? "–" : v.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
+  const fmtP = (p) => !isFinite(p) ? "–" : p < 0.001 ? "< 0,001" : fmtN(p, 3);
+  const estrelas = (p) => p < 0.001 ? "***" : p < 0.01 ? "**" : p < 0.05 ? "*" : "";
+
+  let REL = null, tokenRel = 0, ultimoCodigo = "";
+  const SEM_PARTIDO = new Set(["r33"]), SEM_UF = new Set(["rfg", "rl"]);
+  const relAtual = () => REL.relacoes.find((r) => r.id === estado.rRel) || REL.relacoes[0];
+
+  async function relacoes() {
+    const meu = ++tokenRel, el = $("#g-relacao");
+    try {
+      REL ||= await json("dados/relacoes/relacoes.json");
+      if (!$("#r-rel").options.length) opcoes($("#r-rel"), REL.relacoes.map((r) => [r.id, `${r.analise} · ${r.titulo}`]));
+      const rel = relAtual(); estado.rRel = rel.id; $("#r-rel").value = rel.id;
+      const rec = rel.recortes.find((r) => r.id === estado.rRecorte) || rel.recortes[0]; estado.rRecorte = rec.id;
+      opcoes($("#r-recorte"), rel.recortes.map((r) => [r.id, r.rot])); $("#r-recorte").value = rec.id;
+      const anos = rec.anos.slice().reverse();
+      const anoOpts = rec.por_ano ? anos.map((a) => [a, a]) : [["todos", "Todos os anos"], ...anos.map((a) => [a, a])];
+      if (!anoOpts.some(([v]) => String(v) === String(estado.rAno))) estado.rAno = rec.por_ano ? anos[0] : "todos";
+      opcoes($("#r-ano"), anoOpts); $("#r-ano").value = estado.rAno;
+      const vs = Object.entries(rel.variaveis);
+      if (!rel.variaveis[estado.rX]) estado.rX = rel.x;
+      if (!rel.variaveis[estado.rY] || estado.rY === estado.rX) estado.rY = rel.y === estado.rX ? vs.find(([k]) => k !== estado.rX)[0] : rel.y;
+      opcoes($("#r-x"), vs.map(([k, v]) => [k, v.rot])); $("#r-x").value = estado.rX;
+      opcoes($("#r-y"), vs.filter(([k]) => k !== estado.rX).map(([k, v]) => [k, v.rot])); $("#r-y").value = estado.rY;
+      $("#r-pergunta").innerHTML = `${esc(rel.pergunta)}<small>Análise ${esc(rel.analise)} · unidade: ${esc(rel.unidade)}</small>`;
+      const ign = [!SEM_PARTIDO.has(rel.id) || !estado.partido ? "" : "o filtro de partido não se aplica (a unidade é o distrito)",
+                   !SEM_UF.has(rel.id) || !estado.uf ? "" : "o filtro de UF não se aplica (a unidade é o partido nacional)"].filter(Boolean);
+      $("#r-nota").textContent = rel.nota + (ign.length ? " Atenção: " + ign.join("; ") + "." : "");
+
+      const arq = rec.por_ano ? `${rel.id}_${rec.id}_${estado.rAno}` : `${rel.id}_${rec.id}`;
+      el.querySelector(".vazio") || (el.style.opacity = 0.5);
+      const D = await json(`dados/relacoes/${arq}.json`);
+      if (meu !== tokenRel) return; el.style.opacity = 1;
+      const C = D.cols, X = C[estado.rX], Y = C[estado.rY];
+      const usaP = !SEM_PARTIDO.has(rel.id), usaU = !SEM_UF.has(rel.id);
+      const pi = estado.partido && usaP ? REL.partidos.indexOf(estado.partido) : -1, ui = estado.uf && usaU ? REL.ufs.indexOf(estado.uf) : -1;
+      const anoF = estado.rAno === "todos" ? null : +estado.rAno;
+      const xs = [], ys = [];
+      for (let i = 0; i < D.n; i++) {
+        if (anoF != null && C.ano[i] !== anoF) continue;
+        if (pi >= 0 && C.p[i] !== pi) continue;
+        if (ui >= 0 && C.uf[i] !== ui) continue;
+        const a = X[i], b = Y[i]; if (a == null || b == null) continue;
+        xs.push(a); ys.push(b);
+      }
+      const vx = rel.variaveis[estado.rX], vy = rel.variaveis[estado.rY];
+      const binario = vx.tipo === "bin";
+      const filtros = [estado.rAno === "todos" ? "todos os anos" : estado.rAno, pi >= 0 ? estado.partido : "todos os partidos", ui >= 0 ? UFS_NOMES[estado.uf] : "Brasil"].join(" · ");
+      if (xs.length < 3) { el.innerHTML = `<p class="vazio">Poucos casos neste recorte (${xs.length}). Tente outro ano, partido ou UF.</p>`; $("#r-stats").innerHTML = ""; }
+      else if (binario) desenharGrupos(el, xs, ys, vx, vy, filtros);
+      else desenharDispersao(el, xs, ys, vx, vy, rel, filtros);
+      ultimoCodigo = codigoR(rel, rec, vx, vy);
+      $("#r-codigo-txt").textContent = ultimoCodigo;
+    } catch (e) {
+      if (meu === tokenRel) el.innerHTML = `<p class="vazio">Não foi possível carregar a relação (${esc(e.message)}).</p>`;
+    }
+  }
+
+  function statBox(rot, valor, ctx) { return `<div class="stat"><div class="rotulo">${rot}</div><div class="valor">${valor}</div>${ctx ? `<div class="contexto">${ctx}</div>` : ""}</div>`; }
+
+  function desenharDispersao(el, xs, ys, vx, vy, rel, filtros) {
+    const S = estatisticas(xs, ys), n = xs.length;
+    const W = Math.max(300, el.clientWidth), H = W < 560 ? 300 : 380, m = { t: 10, r: 14, b: 44, l: 52 };
+    const iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const ext = (v) => { let lo = Infinity, hi = -Infinity; for (const a of v) { if (a < lo) lo = a; if (a > hi) hi = a; } if (lo === hi) { lo -= 1; hi += 1; } const p = (hi - lo) * 0.03; return [lo - p, hi + p]; };
+    const [x0, x1] = ext(xs), [y0, y1] = ext(ys);
+    const X = (v) => m.l + (v - x0) / (x1 - x0) * iw, Y = (v) => m.t + ih - (v - y0) / (y1 - y0) * ih;
+    const ticks = (lo, hi) => { const st = Math.pow(10, Math.floor(Math.log10((hi - lo) / 4))); const k = [1, 2, 2.5, 5, 10].map((q) => q * st).find((s) => (hi - lo) / s <= 6); const o = []; for (let v = Math.ceil(lo / k) * k; v <= hi; v += k) o.push(+v.toFixed(10)); return o; };
+    const fmtTick = (v) => Math.abs(v) >= 1000 ? (v / 1000).toLocaleString("pt-BR") + " mil" : v.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
+    // médias por décimo de X
+    const ord = xs.map((_, i) => i).sort((a, b) => xs[a] - xs[b]), dec = [];
+    for (let k = 0; k < 10; k++) { const ini = Math.floor(k * n / 10), fim = Math.floor((k + 1) * n / 10); if (fim <= ini) continue;
+      let sx = 0, sy = 0; for (let j = ini; j < fim; j++) { sx += xs[ord[j]]; sy += ys[ord[j]]; } dec.push({ k: k + 1, x: sx / (fim - ini), y: sy / (fim - ini), n: fim - ini }); }
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Dispersão de ${esc(vy.rot)} por ${esc(vx.rot)}"><g class="grade">`;
+    for (const v of ticks(y0, y1)) s += `<line x1="${m.l}" x2="${W - m.r}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${m.l - 6}" y="${Y(v) + 4}" text-anchor="end">${fmtTick(v)}</text>`;
+    for (const v of ticks(x0, x1)) s += `<line x1="${X(v)}" x2="${X(v)}" y1="${m.t}" y2="${m.t + ih}"/><text x="${X(v)}" y="${H - 26}" text-anchor="middle">${fmtTick(v)}</text>`;
+    s += `</g><text x="${m.l + iw / 2}" y="${H - 6}" text-anchor="middle" style="fill:var(--text)">${esc(vx.rot)}</text>`;
+    s += `<text transform="translate(12 ${m.t + ih / 2}) rotate(-90)" text-anchor="middle" style="fill:var(--text)">${esc(vy.rot)}</text>`;
+    if (rel.diagonal) { const lo = Math.max(x0, y0), hi = Math.min(x1, y1); if (hi > lo) s += `<line x1="${X(lo)}" y1="${Y(lo)}" x2="${X(hi)}" y2="${Y(hi)}" stroke="${css("--muted")}" stroke-dasharray="4 3"/>`; }
+    if (vy.tipo === "dri" && y0 < 0 && y1 > 0) s += `<line x1="${m.l}" x2="${W - m.r}" y1="${Y(0)}" y2="${Y(0)}" stroke="${css("--muted")}"/>`;
+    if (isFinite(S.b)) s += `<line x1="${X(x0)}" y1="${Y(S.a + S.b * x0)}" x2="${X(x1)}" y2="${Y(S.a + S.b * x1)}" stroke="${css("--s2")}" stroke-width="2"/>`;
+    s += `<path d="${dec.map((d, i) => (i ? "L" : "M") + X(d.x) + " " + Y(d.y)).join("")}" fill="none" stroke="${css("--text")}" stroke-width="1.5"/>`;
+    dec.forEach((d, i) => { s += `<circle class="dec" data-i="${i}" cx="${X(d.x)}" cy="${Y(d.y)}" r="5" fill="${css("--text")}" stroke="${css("--surface")}" stroke-width="2"/><circle class="dec" data-i="${i}" cx="${X(d.x)}" cy="${Y(d.y)}" r="12" fill="transparent"/>`; });
+    s += `</svg><div class="legenda"><span><i style="background:${css("--s1")};height:8px;width:8px;border-radius:50%"></i>Casos (${int(n)})</span><span><i style="background:${css("--s2")}"></i>Reta de regressão (MQO)</span><span><i style="background:${css("--text")}"></i>Média por décimo de X</span>${rel.diagonal ? `<span><i style="background:${css("--muted")}"></i>Proporcionalidade (y = x)</span>` : ""}</div>`;
+    el.innerHTML = s;
+    // pontos em canvas (rápido para dezenas de milhares)
+    const svg = el.querySelector("svg"), cv = document.createElement("canvas"), dpr = devicePixelRatio || 1, rect = svg.getBoundingClientRect(), esc_ = rect.width / W;
+    cv.width = Math.round(rect.width * dpr); cv.height = Math.round(rect.height * dpr); cv.style.width = rect.width + "px"; cv.style.height = rect.height + "px";
+    el.insertBefore(cv, svg.nextSibling); svg.style.position = "relative"; svg.style.zIndex = 1;
+    const ctx = cv.getContext("2d"); ctx.scale(dpr * esc_, dpr * esc_);
+    ctx.fillStyle = css("--s1"); ctx.globalAlpha = n > 20000 ? 0.06 : n > 5000 ? 0.12 : n > 1000 ? 0.25 : n > 200 ? 0.45 : 0.7;
+    const rr = n > 5000 ? 1.6 : 2.6;
+    for (let i = 0; i < n; i++) { ctx.beginPath(); ctx.arc(X(xs[i]), Y(ys[i]), rr, 0, 6.2832); ctx.fill(); }
+    el.querySelectorAll("circle.dec").forEach((c) => {
+      c.addEventListener("pointermove", (ev) => { const d = dec[+c.dataset.i];
+        mostraTip(ev, `<b>${d.k}º décimo de X</b>` + linhaTip("Média de X", fmtN(d.x)) + linhaTip("Média de Y", fmtN(d.y)) + linhaTip("Casos", int(d.n))); });
+      c.addEventListener("pointerleave", () => ($("#tooltip").hidden = true));
+    });
+    if (!isFinite(S.r)) {
+      $("#r-stats").innerHTML = statBox("Sem variação", "–", `${esc(isFinite(S.b) ? vy.rot : vx.rot)} tem o mesmo valor em todos os casos deste recorte, então não há correlação a calcular.`) + statBox("Casos", int(n), esc(filtros));
+      return;
+    }
+    const forca = Math.abs(S.r) < 0.1 ? "muito fraca" : Math.abs(S.r) < 0.3 ? "fraca" : Math.abs(S.r) < 0.5 ? "moderada" : "forte";
+    $("#r-stats").innerHTML =
+      statBox("Correlação de Pearson (r)", `${fmtN(S.r, 3)}<small> ${estrelas(S.p)}</small>`, `p ${S.p < 0.001 ? "" : "= "}${fmtP(S.p)} · associação ${forca}${S.r < 0 ? " e negativa" : S.r > 0 ? " e positiva" : ""}`) +
+      statBox("Correlação de Spearman (ρ)", fmtN(S.rs, 3), `p ${S.ps < 0.001 ? "" : "= "}${fmtP(S.ps)} · por postos, robusta a extremos`) +
+      statBox("Inclinação (MQO)", fmtN(S.b, 3), `erro-padrão ${fmtN(S.se, 3)} · R² = ${fmtN(S.r2, 3)}<br>Y muda ${fmtN(S.b, 2)} para cada 1 de X`) +
+      statBox("Casos", int(n), esc(filtros));
+  }
+
+  function desenharGrupos(el, xs, ys, vx, vy, filtros) {
+    const y0 = [], y1 = []; xs.forEach((x, i) => (x >= 0.5 ? y1 : y0).push(ys[i]));
+    if (!y0.length || !y1.length) { el.innerHTML = `<p class="vazio">Só há casos em um dos grupos neste recorte.</p>`; $("#r-stats").innerHTML = ""; return; }
+    const T = welch(y0, y1), rot0 = "Não (0)", rot1 = "Sim (1)";
+    const W = Math.max(300, el.clientWidth), H = 300, m = { t: 16, r: 20, b: 44, l: 56 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const hi = Math.max(T.m0 + T.ic0, T.m1 + T.ic1) * 1.15, lo = Math.min(0, T.m0 - T.ic0, T.m1 - T.ic1) * 1.15;
+    const Y = (v) => m.t + ih - (v - lo) / (hi - lo) * ih, cx = [m.l + iw * 0.3, m.l + iw * 0.7];
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Médias de ${esc(vy.rot)} por grupo"><g class="grade">`;
+    const st = Math.pow(10, Math.floor(Math.log10((hi - lo) / 4))), k = [1, 2, 2.5, 5, 10].map((q) => q * st).find((s_) => (hi - lo) / s_ <= 6);
+    for (let v = Math.ceil(lo / k) * k; v <= hi; v += k) s += `<line x1="${m.l}" x2="${W - m.r}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${m.l - 6}" y="${Y(v) + 4}" text-anchor="end">${fmtN(v, k < 1 ? 2 : 0)}</text>`;
+    s += `</g><text transform="translate(12 ${m.t + ih / 2}) rotate(-90)" text-anchor="middle" style="fill:var(--text)">${esc(vy.rot)} (média)</text>`;
+    [[T.m0, T.ic0, T.n0, rot0, "--s1"], [T.m1, T.ic1, T.n1, rot1, "--s2"]].forEach(([mu, ic, nn, rot, cor], i) => {
+      const w = Math.min(90, iw * 0.22);
+      s += `<g class="grupo" data-i="${i}"><rect x="${cx[i] - w / 2}" y="${Y(Math.max(mu, 0))}" width="${w}" height="${Math.abs(Y(0) - Y(mu))}" rx="4" fill="${css(cor)}" opacity=".85"/>` +
+        `<line x1="${cx[i]}" x2="${cx[i]}" y1="${Y(mu - ic)}" y2="${Y(mu + ic)}" stroke="${css("--text")}" stroke-width="1.5"/>` +
+        `<line x1="${cx[i] - 8}" x2="${cx[i] + 8}" y1="${Y(mu + ic)}" y2="${Y(mu + ic)}" stroke="${css("--text")}" stroke-width="1.5"/>` +
+        `<line x1="${cx[i] - 8}" x2="${cx[i] + 8}" y1="${Y(mu - ic)}" y2="${Y(mu - ic)}" stroke="${css("--text")}" stroke-width="1.5"/>` +
+        `<text x="${cx[i] + w / 2 + 6}" y="${Y(mu) + 4}" style="fill:var(--text);font-weight:600">${fmtN(mu)}</text>` +
+        `<text x="${cx[i]}" y="${H - 26}" text-anchor="middle" style="fill:var(--text)">${rot}</text><text x="${cx[i]}" y="${H - 10}" text-anchor="middle">${int(nn)} casos</text></g>`;
+    });
+    el.innerHTML = s + `</svg><p class="nota">${esc(vx.rot)}. Barras: média; traços: intervalo de 95%.</p>`;
+    $("#r-stats").innerHTML =
+      statBox("Diferença de médias (1 − 0)", `${fmtN(T.dif)}<small> ${estrelas(T.p)}</small>`, `teste t de Welch: t = ${fmtN(T.t)}, p ${T.p < 0.001 ? "" : "= "}${fmtP(T.p)}`) +
+      statBox(`Média com ${rot1.toLowerCase()}`, fmtN(T.m1), `${int(T.n1)} casos`) +
+      statBox(`Média com ${rot0.toLowerCase()}`, fmtN(T.m0), `${int(T.n0)} casos`) +
+      statBox("Casos", int(T.n0 + T.n1), esc(filtros));
+  }
+
+  // ---------------------------------------------------------------- código R
+  const R_CAB = (rel, rec, vx, vy) => `# bd_representa — Relações: ${rel.titulo} (Análise Exploratória ${rel.analise})
+# Gerado em https://brunoschaefer.github.io/bd_representa/#relacoes
+# Recorte: ${rec.rot} | Ano: ${estado.rAno === "todos" ? "todos" : estado.rAno} | Partido: ${estado.partido && !SEM_PARTIDO.has(rel.id) ? estado.partido : "todos"} | UF: ${estado.uf && !SEM_UF.has(rel.id) ? estado.uf : "todas"}
+# X: ${vx.rot}
+# Y: ${vy.rot}
+# Unidade de análise: ${rel.unidade}
+#
+# Pacotes: install.packages(c("data.table", "R.utils", "ggplot2"))
+# Citação: Schaefer, Bruno. bd_representa. IESP-UERJ, MAPE, 2026.
+#          https://github.com/BrunoSchaefer/bd_representa
+
+library(data.table)
+library(ggplot2)
+
+# Lê um banco da release (baixa uma vez para a pasta temporária)
+url_release <- "https://github.com/BrunoSchaefer/bd_representa/releases/latest/download/"
+ler <- function(banco, cols) {
+  arq <- file.path(tempdir(), paste0(banco, ".csv.gz"))
+  if (!file.exists(arq)) download.file(paste0(url_release, banco, ".csv.gz"), arq, mode = "wb")
+  fread(arq, select = cols, encoding = "UTF-8")
+}
+`;
+  const vetor = (v) => `c(${v.map((x) => `"${x}"`).join(", ")})`;
+  const UF_IBGE_R = `uf_ibge <- c("11" = "RO", "12" = "AC", "13" = "AM", "14" = "RR", "15" = "PA", "16" = "AP", "17" = "TO",
+             "21" = "MA", "22" = "PI", "23" = "CE", "24" = "RN", "25" = "PB", "26" = "PE", "27" = "AL",
+             "28" = "SE", "29" = "BA", "31" = "MG", "32" = "ES", "33" = "RJ", "35" = "SP", "41" = "PR",
+             "42" = "SC", "43" = "RS", "50" = "MS", "51" = "MT", "52" = "GO", "53" = "DF")`;
+  const DESP_R = ["desp_valor_total_bruto", "desp_valor_aparato_pessoal", "desp_valor_aparato_sedes", "desp_valor_aparato_politica",
+    "desp_valor_eleicoes_comunicacao", "desp_valor_eleicoes_publicidade", "desp_valor_transferencias"];
+
+  function montarR(rel, rec) {
+    const id = rel.id, r = rec.id;
+    if (id === "r31") {
+      const mun = r === "municipal";
+      const dir = mun ? "bd_diretorios_municipal" : "bd_diretorios_estadual", lis = mun ? "bd_partidos_vereanca" : "bd_partidos_assembleias";
+      const chD = mun ? "CD_MUNICIPIO" : "SG_UF", chL = mun ? "id_municipio_tse" : "sigla_uf";
+      return `# Diretórios e votação da lista do partido na eleição ANTERIOR ao ano da direção
+dir <- ler("${dir}", ${vetor(["ANO", "SG_PARTIDO_PAD", "SG_UF", ...(mun ? ["CD_MUNICIPIO"] : []), "total_membros", "proporcao_mulheres", "proporcao_mulheres_decisao", "tem_mulher_presidente", "tem_mulher_tesoureiro"])})
+dir <- unique(dir, by = c("ANO", "SG_PARTIDO_PAD", "${chD}"))
+dir[, ano_eleicao := ${mun ? "2012L + 4L * ((ANO - 2013L) %/% 4L)" : "2010L + 4L * ((ANO - 2011L) %/% 4L)"}]   # ${mun ? "2015-16 -> 2012; 2017-20 -> 2016; ..." : "2015-18 -> 2014; 2019-22 -> 2018; ..."}
+lis <- ler("${lis}", c("ano", "SG_PARTIDO_PAD", "${chL}", "pct_votos_nominais_distrito"))
+d <- merge(dir, lis[, .(ano_eleicao = ano, SG_PARTIDO_PAD, ${chD} = ${chL}, pct_votos_nominais_distrito)],
+           by = c("ano_eleicao", "SG_PARTIDO_PAD", "${chD}"), all.x = TRUE)
+d <- d[, .(ano = ANO, partido = SG_PARTIDO_PAD, uf = SG_UF,
+           votos_ant = fcoalesce(as.numeric(pct_votos_nominais_distrito), 0),   # sem lista = 0%
+           membros = total_membros,
+           prop_mulheres = 100 * proporcao_mulheres, prop_decisao = 100 * proporcao_mulheres_decisao,
+           mulher_pres = tem_mulher_presidente, mulher_tes = tem_mulher_tesoureiro)]`;
+    }
+    if (id === "r32") {
+      const ver = r === "vereanca", lis = { vereanca: "bd_partidos_vereanca", assembleia: "bd_partidos_assembleias", camara: "bd_partidos_camara" }[r];
+      const props = ["prop_candidatos_mulheres", "prop_receitas_mulheres", "prop_receitas_partidarias_mulheres", "prop_receitas_direcao_mulheres"];
+      return `# Listas partidárias e direção do partido no distrito no ano ANTERIOR à eleição
+lis <- ler("${lis}", ${vetor(["ano", "SG_PARTIDO_PAD", "sigla_uf", ...(ver ? ["id_municipio_tse"] : []), ...props])})
+lis <- lis[ano %in% ${ver ? "c(2016, 2020, 2024)" : "c(2018, 2022)"}]
+dir <- ler("${ver ? "bd_diretorios_municipal" : "bd_diretorios_estadual"}", ${vetor(["ANO", "SG_PARTIDO_PAD", ver ? "CD_MUNICIPIO" : "SG_UF", "tem_mulher_presidente", "tem_mulher_decisao"])})
+dir <- unique(dir, by = c("ANO", "SG_PARTIDO_PAD", "${ver ? "CD_MUNICIPIO" : "SG_UF"}"))
+d <- merge(lis, dir[, .(ano = ANO + 1L, SG_PARTIDO_PAD, ${ver ? "id_municipio_tse = CD_MUNICIPIO" : "sigla_uf = SG_UF"}, tem_mulher_presidente, tem_mulher_decisao)],
+           by = c("ano", "SG_PARTIDO_PAD", "${ver ? "id_municipio_tse" : "sigla_uf"}"))
+d <- d[, .(ano, partido = SG_PARTIDO_PAD, uf = sigla_uf,
+           mulher_pres_ant = tem_mulher_presidente, mulher_dec_ant = tem_mulher_decisao,
+           cand_m = 100 * prop_candidatos_mulheres, rec_m = 100 * prop_receitas_mulheres,
+           rec_part_m = 100 * prop_receitas_partidarias_mulheres, rec_dir_m = 100 * prop_receitas_direcao_mulheres)]`;
+    }
+    if (id === "r33") {
+      const med = ["candidatos", "receitas", "receitas_partidarias", "eleitos"], ver = r === "vereanca";
+      const ind = ["genero", "racial"].flatMap((g) => med.map((m_) => `indice_${g}_${m_}_${r}`));
+      const ren = ["genero", "racial"].flatMap((g) => med.map((m_) => `${g === "genero" ? "g" : "r"}_${m_} = indice_${g}_${m_}_${r}`));
+      return `# Distritos: PIB per capita e índices de equidade (DRI)
+${ver ? UF_IBGE_R + "\n" : ""}d <- ler("${ver ? "bd_distritos_municipal" : "bd_distritos_estadual"}", ${vetor(["ano", ver ? "id_municipio" : "sigla_uf", "pib_per_capita", ...ind])})
+d <- d[, .(ano, partido = NA_character_, uf = ${ver ? "uf_ibge[substr(as.character(id_municipio), 1, 2)]" : "sigla_uf"},
+           log_pib = log(fifelse(pib_per_capita > 0, pib_per_capita, NA_real_)), pib_mil = pib_per_capita / 1000,
+           ${ren.join(",\n           ")})]`;
+    }
+    if (id === "rfg") {
+      return `# Características nacionais dos partidos (partido-ano)
+d <- ler("bd_diretorios_nacional", c("ANO", "SG_PARTIDO_PAD", "bls_ideologia", "bolognesi_ideologia", "salgado_democracia_interna", "ribeiro_ipd"))
+d <- unique(d, by = c("ANO", "SG_PARTIDO_PAD"))
+d <- d[, .(ano = ANO, partido = SG_PARTIDO_PAD, uf = "BR", bls = bls_ideologia, bolognesi = bolognesi_ideologia,
+           salgado = salgado_democracia_interna, ribeiro = ribeiro_ipd)]`;
+    }
+    if (id === "rl") {
+      const banco = `bd_diretorios_${r}`, ch = { nacional: [], estadual: ["SG_UF"], municipal: ["CD_MUNICIPIO"] }[r];
+      return `# Despesas partidárias da esfera ${r}, somadas por partido-ano (2017-2025), e ideologia (BLS)
+desp <- ler("${banco}", ${vetor(["ANO", "SG_PARTIDO_PAD", ...ch, ...DESP_R])})
+desp <- unique(desp, by = ${vetor(["ANO", "SG_PARTIDO_PAD", ...ch])})
+v <- ${vetor(DESP_R)}
+desp <- desp[ANO >= 2017, lapply(.SD, function(x) sum(as.numeric(x), na.rm = TRUE)), by = .(ANO, SG_PARTIDO_PAD), .SDcols = v]
+desp <- desp[desp_valor_total_bruto > 0]
+ideo <- unique(ler("bd_diretorios_nacional", c("ANO", "SG_PARTIDO_PAD", "bls_ideologia")), by = c("ANO", "SG_PARTIDO_PAD"))
+d <- merge(desp, ideo, by = c("ANO", "SG_PARTIDO_PAD"))
+d <- d[, .(ano = ANO, partido = SG_PARTIDO_PAD, uf = "BR", bls = bls_ideologia,
+           pct_aparato = 100 * (desp_valor_aparato_pessoal + desp_valor_aparato_sedes + desp_valor_aparato_politica) / desp_valor_total_bruto,
+           pct_pessoal = 100 * desp_valor_aparato_pessoal / desp_valor_total_bruto,
+           pct_eleicoes = 100 * (desp_valor_eleicoes_comunicacao + desp_valor_eleicoes_publicidade) / desp_valor_total_bruto,
+           pct_transferencias = 100 * desp_valor_transferencias / desp_valor_total_bruto,
+           desp_mi = desp_valor_total_bruto / 1e6)]`;
+    }
+    if (id === "rno") {
+      const ver = r === "vereanca", ch = ver ? "id_municipio_tse" : "sigla_uf";
+      return `# Listas partidárias: cadeiras obtidas e parcela das receitas dos diretórios do distrito
+d <- ler("${ver ? "bd_partidos_vereanca" : "bd_partidos_assembleias"}", ${vetor(["ano", "SG_PARTIDO_PAD", "sigla_uf", ...(ver ? [ch] : []), "pct_cadeiras", "pct_votos_nominais_distrito", "diretorio_rec_valor_total_bruto"])})
+d <- d[!is.na(diretorio_rec_valor_total_bruto)${ver ? "" : " & ano < 2026"}]
+d[, rec := as.numeric(diretorio_rec_valor_total_bruto)]
+d[, pct_recursos := if (sum(rec) > 0) 100 * rec / sum(rec) else NA_real_, by = .(ano, ${ch})]
+d <- d[!is.na(pct_recursos), .(ano, partido = SG_PARTIDO_PAD, uf = sigla_uf, pct_cadeiras,
+                              pct_votos = pct_votos_nominais_distrito, pct_recursos)]`;
+    }
+    if (id === "rq") {
+      const pref = r === "prefeitura";
+      return `# Candidaturas: parcela do gasto com internet do distrito e votação
+d <- ler("bd_candidatos_${r}", ${vetor(["ano", "sigla_uf", ...(pref ? ["id_municipio"] : []), "SG_PARTIDO_PAD", "despesas_internet_can", "pct_votos_distrito"])})
+d[, internet := fcoalesce(as.numeric(despesas_internet_can), 0)]
+d[, tot := sum(internet), by = .(ano, ${pref ? "id_municipio" : "sigla_uf"})]
+d <- d[tot > 0 & !is.na(pct_votos_distrito)]   # só distritos com algum gasto com internet
+d <- d[, .(ano, partido = SG_PARTIDO_PAD, uf = sigla_uf, pct_internet = 100 * internet / tot,
+           pct_votos = pct_votos_distrito, internet_mil = internet / 1000)]`;
+    }
+    if (id === "rs") {
+      const mun = r === "municipal", chD = mun ? "CD_MUNICIPIO" : "SG_UF", chL = mun ? "id_municipio_tse" : "sigla_uf";
+      return `# Rotatividade da direção no ano seguinte à eleição e desempenho da lista do partido
+dir <- ler("${mun ? "bd_diretorios_municipal" : "bd_diretorios_estadual"}", ${vetor(["ANO", "SG_PARTIDO_PAD", "SG_UF", ...(mun ? ["CD_MUNICIPIO"] : []), "n_membros_t1", "turnover_prop", "turnover_prop_decisao"])})
+dir <- unique(dir, by = c("ANO", "SG_PARTIDO_PAD", "${chD}"))
+dir <- dir[ANO %in% ${mun ? "c(2017, 2021, 2025)" : "c(2019, 2023)"} & !is.na(turnover_prop) & n_membros_t1 > 0]
+lis <- ler("${mun ? "bd_partidos_vereanca" : "bd_partidos_assembleias"}", c("ano", "SG_PARTIDO_PAD", "${chL}", "n_eleitos"))
+d <- merge(dir, lis[, .(ANO = ano + 1L, SG_PARTIDO_PAD, ${chD} = ${chL}, n_eleitos)],
+           by = c("ANO", "SG_PARTIDO_PAD", "${chD}"), all.x = TRUE)
+d <- d[, .(ano = ANO, partido = SG_PARTIDO_PAD, uf = SG_UF,
+           sem_eleitos = as.integer(is.na(n_eleitos) | n_eleitos == 0),   # sem lista ou lista sem eleitos
+           n_eleitos = fcoalesce(as.numeric(n_eleitos), 0),
+           turnover = 100 * turnover_prop, turnover_dec = 100 * turnover_prop_decisao, membros_t1 = n_membros_t1)]`;
+    }
+    return "";
+  }
+
+  function codigoR(rel, rec, vx, vy) {
+    const x = estado.rX, y = estado.rY, filt = [];
+    if (estado.rAno !== "todos") filt.push(`ano == ${estado.rAno}`);
+    if (estado.partido && !SEM_PARTIDO.has(rel.id)) filt.push(`partido == "${estado.partido}"`);
+    if (estado.uf && !SEM_UF.has(rel.id)) filt.push(`uf == "${estado.uf}"`);
+    const base = `${R_CAB(rel, rec, vx, vy)}
+# Base da relação ------------------------------------------------------------------
+${montarR(rel, rec)}
+
+# Filtros escolhidos na página ------------------------------------------------------
+${filt.length ? `d <- d[${filt.join(" & ")}]` : "# (nenhum filtro)"}
+z <- d[!is.na(${x}) & !is.na(${y})]
+nrow(z)
+`;
+    const tituloG = vy.rot.replace(/"/g, "'"), xg = vx.rot.replace(/"/g, "'");
+    if (vx.tipo === "bin") return base + `
+# Comparação de médias (Y por grupo de X) -------------------------------------------
+z[, .(casos = .N, media = mean(${y}), dp = sd(${y})), by = ${x}][order(${x})]
+t.test(${y} ~ ${x}, data = z)   # teste t de Welch (variâncias diferentes)
+summary(lm(${y} ~ ${x}, data = z))   # diferença de médias como regressão
+${rel.controle ? `summary(lm(${y} ~ ${x} + ${rel.controle}, data = z))   # controlando por ${rel.variaveis[rel.controle].rot.toLowerCase()}, como na Análise Exploratória\n` : ""}
+ggplot(z[, .(media = mean(${y}), ic = 1.96 * sd(${y}) / sqrt(.N)), by = .(grupo = factor(${x}, 0:1, c("Não (0)", "Sim (1)")))],
+       aes(grupo, media)) +
+  geom_col(width = 0.5, fill = "#2a78d6") +
+  geom_errorbar(aes(ymin = media - ic, ymax = media + ic), width = 0.15) +
+  labs(x = "${xg}", y = "${tituloG} (média)",
+       caption = "Fonte: bd_representa (Schaefer, 2026). Barras: média; traços: IC de 95%.") +
+  theme_minimal()
+
+# Modelos com efeitos fixos e erros agrupados: ver "4 Análises exploratórias/bd_representa_analise.R"
+# (análise ${rel.analise}) em https://github.com/BrunoSchaefer/bd_representa
+`;
+    return base + `
+# Correlações e regressão -----------------------------------------------------------
+cor.test(z$${x}, z$${y})                                        # Pearson
+cor.test(z$${x}, z$${y}, method = "spearman", exact = FALSE)    # Spearman
+summary(lm(${y} ~ ${x}, data = z))                               # MQO
+
+# Média de Y por décimo de X
+z[, decimo := pmin(10L, as.integer(ceiling(10 * frank(${x}, ties.method = "first") / .N)))]
+z[, .(casos = .N, media_x = mean(${x}), media_y = mean(${y})), by = decimo][order(decimo)]
+
+ggplot(z, aes(${x}, ${y})) +
+  geom_point(alpha = ${xsN(rel)}, size = 1, colour = "#2a78d6") +${rel.diagonal ? `
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", colour = "grey50") +` : ""}
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE, colour = "#eb6834") +
+  labs(x = "${xg}", y = "${tituloG}",
+       caption = "Fonte: bd_representa (Schaefer, 2026).") +
+  theme_minimal()
+
+# Modelos com efeitos fixos e erros agrupados: ver "4 Análises exploratórias/bd_representa_analise.R"
+# (análise ${rel.analise}) em https://github.com/BrunoSchaefer/bd_representa
+`;
+  }
+  const xsN = (rel) => ({ r31: 0.05, r32: 0.1, rno: 0.1, rq: 0.15, rs: 0.05 }[rel.id] || 0.5);
+
+  $("#r-codigo-btn").addEventListener("click", () => {
+    const box = $("#r-codigo"), ab = box.hidden; box.hidden = !ab; $("#r-codigo-btn").setAttribute("aria-expanded", ab);
+  });
+  $("#r-copiar").addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText(ultimoCodigo); $("#r-copiado").textContent = "Código copiado."; }
+    catch { const t = document.createElement("textarea"); t.value = ultimoCodigo; document.body.appendChild(t); t.select(); document.execCommand("copy"); t.remove(); $("#r-copiado").textContent = "Código copiado."; }
+    setTimeout(() => ($("#r-copiado").textContent = ""), 2500);
+  });
+  $("#r-baixar").addEventListener("click", () => {
+    const rel = relAtual(), nome = `bd_representa_relacao_${rel.analise.replace(/\W+/g, "")}_${estado.rRecorte}_${estado.rX}_${estado.rY}.R`;
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([ultimoCodigo], { type: "text/plain;charset=utf-8" }));
+    a.download = nome; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
 
   /* ------------------------------------------------------------ 3. partidos (barras) */
   // Barras horizontais por partido. modo "pct": 0 a máx, com linha de referência opcional;
