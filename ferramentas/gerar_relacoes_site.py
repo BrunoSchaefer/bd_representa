@@ -365,7 +365,7 @@ registrar({
 partidos = sorted(p for p in PARTIDOS if p != "?") + ["?"]
 pidx = {p: i for i, p in enumerate(partidos)}
 uidx = {u: i for i, u in enumerate(UFS)}
-for f in out.glob("r*.json"):  # troca siglas por índices
+for f in out.glob("r*_*.json"):  # troca siglas por índices (só os arquivos de dados, não o manifesto)
     d = json.load(open(f, encoding="utf-8"))
     d["cols"]["p"] = [pidx.get(p, pidx["?"]) for p in d["cols"]["p"]]
     d["cols"]["uf"] = [uidx.get(u, uidx["BR"]) for u in d["cols"]["uf"]]

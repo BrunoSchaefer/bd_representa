@@ -23,7 +23,7 @@
                    mCargo: "vereanca", mAno: null, mMedida: "candidaturas", mGrupo: "mulheres",
                    pDim: "direcoes", pCargo: "vereanca", pMedida: "receitas", pGrupo: "mulheres",
                    dtEscala: "abs", tpNivel: "municipal", tpAno: null, mdNivel: "municipal", mdAno: null, mdCargo: "presidencia",
-                   rRel: "r31", rRecorte: null, rAno: null, rX: null, rY: null };
+                   rRel: "r31", rRecorte: null, rAno: null, rPartido: "", rX: null, rY: null };
   let DIR = [], CAND = [], ARQ = [];
 
   const objetos = (j) => j.linhas.map((l) => Object.fromEntries(j.colunas.map((c, i) => [c, l[i]])));
@@ -72,6 +72,7 @@
     $("#r-ano").onchange = (e) => { estado.rAno = e.target.value === "todos" ? "todos" : +e.target.value; relacoes(); };
     $("#r-x").onchange = (e) => { estado.rX = e.target.value; if (estado.rY === estado.rX) estado.rY = null; relacoes(); };
     $("#r-y").onchange = (e) => { estado.rY = e.target.value; relacoes(); };
+    $("#r-partido").onchange = (e) => { estado.rPartido = e.target.value; relacoes(); };
     segmentado("#md-cargo", "mdCargo");
     $("#tp-nivel").onchange = (e) => { estado.tpNivel = e.target.value; desenhar(); };
     $("#tp-ano").onchange = (e) => { estado.tpAno = +e.target.value; desenhar(); };
@@ -660,7 +661,7 @@
       opcoes($("#r-x"), vs.map(([k, v]) => [k, v.rot])); $("#r-x").value = estado.rX;
       opcoes($("#r-y"), vs.filter(([k]) => k !== estado.rX).map(([k, v]) => [k, v.rot])); $("#r-y").value = estado.rY;
       $("#r-pergunta").innerHTML = `${esc(rel.pergunta)}<small>Análise ${esc(rel.analise)} · unidade: ${esc(rel.unidade)}</small>`;
-      const ign = [!SEM_PARTIDO.has(rel.id) || !estado.partido ? "" : "o filtro de partido não se aplica (a unidade é o distrito)",
+      const ign = [
                    !SEM_UF.has(rel.id) || !estado.uf ? "" : "o filtro de UF não se aplica (a unidade é o partido nacional)"].filter(Boolean);
       $("#r-nota").textContent = rel.nota + (ign.length ? " Atenção: " + ign.join("; ") + "." : "");
 
@@ -669,9 +670,24 @@
       const D = await json(`dados/relacoes/${arq}.json`);
       if (meu !== tokenRel) return; el.style.opacity = 1;
       const C = D.cols, X = C[estado.rX], Y = C[estado.rY];
-      const usaP = !SEM_PARTIDO.has(rel.id), usaU = !SEM_UF.has(rel.id);
-      const pi = estado.partido && usaP ? REL.partidos.indexOf(estado.partido) : -1, ui = estado.uf && usaU ? REL.ufs.indexOf(estado.uf) : -1;
       const anoF = estado.rAno === "todos" ? null : +estado.rAno;
+      const usaP = !SEM_PARTIDO.has(rel.id), usaU = !SEM_UF.has(rel.id);
+      const pi = estado.rPartido && usaP ? REL.partidos.indexOf(estado.rPartido) : -1, ui = estado.uf && usaU ? REL.ufs.indexOf(estado.uf) : -1;
+      // seletor de partido: só nas relações com partido; lista os partidos com casos no ano/UF escolhidos
+      $("#r-partido-l").hidden = !usaP;
+      if (usaP) {
+        const conta = new Map();
+        for (let i = 0; i < D.n; i++) {
+          if (anoF != null && C.ano[i] !== anoF) continue;
+          if (ui >= 0 && C.uf[i] !== ui) continue;
+          if (X[i] == null || Y[i] == null) continue;
+          conta.set(C.p[i], (conta.get(C.p[i]) || 0) + 1);
+        }
+        const lista = [...conta].map(([k, n]) => [REL.partidos[k], n]).filter(([p]) => p && p !== "?").sort((a, b) => a[0].localeCompare(b[0], "pt-BR"));
+        if (estado.rPartido && !lista.some(([p]) => p === estado.rPartido)) lista.push([estado.rPartido, 0]);
+        opcoes($("#r-partido"), lista.map(([p, n]) => [p, n ? `${p} (${int(n)})` : `${p} (sem casos neste recorte)`]), `Todos os partidos (${conta.size})`);
+        $("#r-partido").value = estado.rPartido || "";
+      }
       const xs = [], ys = [];
       for (let i = 0; i < D.n; i++) {
         if (anoF != null && C.ano[i] !== anoF) continue;
@@ -682,7 +698,7 @@
       }
       const vx = rel.variaveis[estado.rX], vy = rel.variaveis[estado.rY];
       const binario = vx.tipo === "bin";
-      const filtros = [estado.rAno === "todos" ? "todos os anos" : estado.rAno, pi >= 0 ? estado.partido : "todos os partidos", ui >= 0 ? UFS_NOMES[estado.uf] : "Brasil"].join(" · ");
+      const filtros = [estado.rAno === "todos" ? "todos os anos" : estado.rAno, pi >= 0 ? estado.rPartido : "todos os partidos", ui >= 0 ? UFS_NOMES[estado.uf] : "Brasil"].join(" · ");
       if (xs.length < 3) { el.innerHTML = `<p class="vazio">Poucos casos neste recorte (${xs.length}). Tente outro ano, partido ou UF.</p>`; $("#r-stats").innerHTML = ""; }
       else if (binario) desenharGrupos(el, xs, ys, vx, vy, filtros);
       else desenharDispersao(el, xs, ys, vx, vy, rel, filtros);
@@ -776,7 +792,7 @@
   // ---------------------------------------------------------------- código R
   const R_CAB = (rel, rec, vx, vy) => `# bd_representa — Relações: ${rel.titulo} (Análise Exploratória ${rel.analise})
 # Gerado em https://brunoschaefer.github.io/bd_representa/#relacoes
-# Recorte: ${rec.rot} | Ano: ${estado.rAno === "todos" ? "todos" : estado.rAno} | Partido: ${estado.partido && !SEM_PARTIDO.has(rel.id) ? estado.partido : "todos"} | UF: ${estado.uf && !SEM_UF.has(rel.id) ? estado.uf : "todas"}
+# Recorte: ${rec.rot} | Ano: ${estado.rAno === "todos" ? "todos" : estado.rAno} | Partido: ${estado.rPartido && !SEM_PARTIDO.has(rel.id) ? estado.rPartido : "todos"} | UF: ${estado.uf && !SEM_UF.has(rel.id) ? estado.uf : "todas"}
 # X: ${vx.rot}
 # Y: ${vy.rot}
 # Unidade de análise: ${rel.unidade}
@@ -912,7 +928,7 @@ d <- d[, .(ano = ANO, partido = SG_PARTIDO_PAD, uf = SG_UF,
   function codigoR(rel, rec, vx, vy) {
     const x = estado.rX, y = estado.rY, filt = [];
     if (estado.rAno !== "todos") filt.push(`ano == ${estado.rAno}`);
-    if (estado.partido && !SEM_PARTIDO.has(rel.id)) filt.push(`partido == "${estado.partido}"`);
+    if (estado.rPartido && !SEM_PARTIDO.has(rel.id)) filt.push(`partido == "${estado.rPartido}"`);
     if (estado.uf && !SEM_UF.has(rel.id)) filt.push(`uf == "${estado.uf}"`);
     const base = `${R_CAB(rel, rec, vx, vy)}
 # Base da relação ------------------------------------------------------------------
