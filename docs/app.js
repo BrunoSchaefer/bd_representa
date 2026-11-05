@@ -685,7 +685,7 @@
         }
         const lista = [...conta].map(([k, n]) => [REL.partidos[k], n]).filter(([p]) => p && p !== "?").sort((a, b) => a[0].localeCompare(b[0], "pt-BR"));
         if (estado.rPartido && !lista.some(([p]) => p === estado.rPartido)) lista.push([estado.rPartido, 0]);
-        opcoes($("#r-partido"), lista.map(([p, n]) => [p, n ? `${p} (${int(n)})` : `${p} (sem casos neste recorte)`]), `Todos os partidos (${conta.size})`);
+        opcoes($("#r-partido"), lista.map(([p, n]) => [p, n ? p : `${p} (sem casos neste recorte)`]), "Todos os partidos");
         $("#r-partido").value = estado.rPartido || "";
       }
       const xs = [], ys = [];
