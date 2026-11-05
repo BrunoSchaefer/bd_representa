@@ -1,0 +1,13 @@
+﻿esfera;tipo;n;pearson;p_pearson;spearman
+Nacional;Aparato;269;-0.1492;0.0143;-0.2032
+Nacional;Aparato: pessoal;269;0.0068;0.9121;-0.0394
+Nacional;Eleições;269;-0.2062;7e-04;-0.0951
+Nacional;Transferências;269;0.2407;1e-04;0.2903
+Estadual;Aparato;263;-0.0647;0.2959;-0.0574
+Estadual;Aparato: pessoal;263;0.1406;0.0225;0.2135
+Estadual;Eleições;263;0.1872;0.0023;0.2362
+Estadual;Transferências;263;0.0607;0.3265;0.0947
+Municipal;Aparato;262;-0.104;0.093;-0.1297
+Municipal;Aparato: pessoal;262;0.0168;0.7871;0.0973
+Municipal;Eleições;262;0.1022;0.0987;0.1695
+Municipal;Transferências;262;0.0476;0.4427;0.0813

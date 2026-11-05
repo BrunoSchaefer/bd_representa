@@ -1,0 +1,81 @@
+﻿grupo;medida;decil;indice;n
+Gênero (mulheres);Candidaturas;1;-0.3243;1668
+Gênero (mulheres);Candidaturas;2;-0.335;1670
+Gênero (mulheres);Candidaturas;3;-0.3398;1670
+Gênero (mulheres);Candidaturas;4;-0.3304;1669
+Gênero (mulheres);Candidaturas;5;-0.3193;1671
+Gênero (mulheres);Candidaturas;6;-0.3241;1669
+Gênero (mulheres);Candidaturas;7;-0.3238;1669
+Gênero (mulheres);Candidaturas;8;-0.3234;1670
+Gênero (mulheres);Candidaturas;9;-0.3295;1670
+Gênero (mulheres);Candidaturas;10;-0.3223;1671
+Gênero (mulheres);Receitas;1;-0.4804;1667
+Gênero (mulheres);Receitas;2;-0.4962;1670
+Gênero (mulheres);Receitas;3;-0.498;1669
+Gênero (mulheres);Receitas;4;-0.4828;1669
+Gênero (mulheres);Receitas;5;-0.4582;1670
+Gênero (mulheres);Receitas;6;-0.4615;1668
+Gênero (mulheres);Receitas;7;-0.462;1669
+Gênero (mulheres);Receitas;8;-0.449;1669
+Gênero (mulheres);Receitas;9;-0.4518;1670
+Gênero (mulheres);Receitas;10;-0.4541;1670
+Gênero (mulheres);Receitas partidárias;1;-0.2178;1087
+Gênero (mulheres);Receitas partidárias;2;-0.231;1088
+Gênero (mulheres);Receitas partidárias;3;-0.2403;1087
+Gênero (mulheres);Receitas partidárias;4;-0.2411;1089
+Gênero (mulheres);Receitas partidárias;5;-0.2388;1088
+Gênero (mulheres);Receitas partidárias;6;-0.2427;1088
+Gênero (mulheres);Receitas partidárias;7;-0.2387;1088
+Gênero (mulheres);Receitas partidárias;8;-0.2389;1088
+Gênero (mulheres);Receitas partidárias;9;-0.2307;1087
+Gênero (mulheres);Receitas partidárias;10;-0.2309;1090
+Gênero (mulheres);Eleitos;1;-0.6699;1668
+Gênero (mulheres);Eleitos;2;-0.6886;1668
+Gênero (mulheres);Eleitos;3;-0.7011;1669
+Gênero (mulheres);Eleitos;4;-0.7216;1669
+Gênero (mulheres);Eleitos;5;-0.7215;1669
+Gênero (mulheres);Eleitos;6;-0.7291;1668
+Gênero (mulheres);Eleitos;7;-0.7256;1669
+Gênero (mulheres);Eleitos;8;-0.7116;1669
+Gênero (mulheres);Eleitos;9;-0.7119;1668
+Gênero (mulheres);Eleitos;10;-0.7108;1671
+Raça (pessoas negras);Candidaturas;1;-0.0098;1112
+Raça (pessoas negras);Candidaturas;2;-0.0382;1114
+Raça (pessoas negras);Candidaturas;3;-0.0491;1114
+Raça (pessoas negras);Candidaturas;4;-0.1021;1113
+Raça (pessoas negras);Candidaturas;5;-0.1824;1114
+Raça (pessoas negras);Candidaturas;6;-0.2415;1113
+Raça (pessoas negras);Candidaturas;7;-0.3139;1113
+Raça (pessoas negras);Candidaturas;8;-0.3158;1114
+Raça (pessoas negras);Candidaturas;9;-0.3187;1114
+Raça (pessoas negras);Candidaturas;10;-0.2759;1114
+Raça (pessoas negras);Receitas;1;-0.0171;1112
+Raça (pessoas negras);Receitas;2;-0.0603;1114
+Raça (pessoas negras);Receitas;3;-0.0699;1113
+Raça (pessoas negras);Receitas;4;-0.1457;1114
+Raça (pessoas negras);Receitas;5;-0.2293;1114
+Raça (pessoas negras);Receitas;6;-0.3013;1112
+Raça (pessoas negras);Receitas;7;-0.3815;1114
+Raça (pessoas negras);Receitas;8;-0.374;1113
+Raça (pessoas negras);Receitas;9;-0.3791;1114
+Raça (pessoas negras);Receitas;10;-0.337;1114
+Raça (pessoas negras);Receitas partidárias;1;0.2014;802
+Raça (pessoas negras);Receitas partidárias;2;0.1314;803
+Raça (pessoas negras);Receitas partidárias;3;0.1324;803
+Raça (pessoas negras);Receitas partidárias;4;-0.0443;802
+Raça (pessoas negras);Receitas partidárias;5;-0.129;804
+Raça (pessoas negras);Receitas partidárias;6;-0.211;803
+Raça (pessoas negras);Receitas partidárias;7;-0.2596;802
+Raça (pessoas negras);Receitas partidárias;8;-0.2507;803
+Raça (pessoas negras);Receitas partidárias;9;-0.2606;803
+Raça (pessoas negras);Receitas partidárias;10;-0.192;804
+Raça (pessoas negras);Eleitos;1;-0.0029;1112
+Raça (pessoas negras);Eleitos;2;-0.0492;1112
+Raça (pessoas negras);Eleitos;3;-0.0749;1113
+Raça (pessoas negras);Eleitos;4;-0.1618;1113
+Raça (pessoas negras);Eleitos;5;-0.2743;1113
+Raça (pessoas negras);Eleitos;6;-0.3807;1112
+Raça (pessoas negras);Eleitos;7;-0.484;1113
+Raça (pessoas negras);Eleitos;8;-0.5138;1113
+Raça (pessoas negras);Eleitos;9;-0.5267;1112
+Raça (pessoas negras);Eleitos;10;-0.4622;1114

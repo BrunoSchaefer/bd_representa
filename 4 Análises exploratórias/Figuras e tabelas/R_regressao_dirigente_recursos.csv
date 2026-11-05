@@ -1,0 +1,29 @@
+﻿cargo_rot;ano;coef;ep;p;n;dif_pct_aprox;recurso
+Vereador;2016;0.1128;0.0076;0;416649;11.9441;partidarios
+Vereador;2020;0.3336;0.0124;0;487081;39.5976;partidarios
+Vereador;2024;0.4935;0.014;0;407693;63.8016;partidarios
+Prefeito;2016;0.0646;0.0993;0.5148;15223;6.6782;partidarios
+Prefeito;2020;-0.3902;0.0832;0;17872;-32.3052;partidarios
+Prefeito;2024;-0.1443;0.0733;0.0489;14445;-13.4396;partidarios
+Dep. estadual/distrital;2018;0.6016;0.0941;0;16888;82.5016;partidarios
+Dep. estadual/distrital;2022;0.7509;0.0903;0;15767;111.8982;partidarios
+Dep. federal;2018;1.3943;0.113;0;7461;303.197;partidarios
+Dep. federal;2022;0.8659;0.0726;0;9402;137.709;partidarios
+Senador;2018;2.2943;0.644;0.0014;302;891.7273;partidarios
+Senador;2022;2.7519;0.7563;0.0012;205;1467.2004;partidarios
+Governador;2018;1.6357;0.6075;0.0122;183;413.2866;partidarios
+Governador;2022;2.3137;0.8381;0.0104;202;911.1509;partidarios
+Vereador;2016;0.441;0.0125;0;416649;55.4234;receitas
+Vereador;2020;0.5448;0.0136;0;487081;72.4281;receitas
+Vereador;2024;0.5442;0.0126;0;407693;72.3203;receitas
+Prefeito;2016;-0.2269;0.0403;0;15223;-20.3037;receitas
+Prefeito;2020;-0.4062;0.037;0;17872;-33.3814;receitas
+Prefeito;2024;-0.2367;0.0429;0;14445;-21.076;receitas
+Dep. estadual/distrital;2018;1.163;0.0971;0;16888;219.9368;receitas
+Dep. estadual/distrital;2022;0.8737;0.0834;0;15767;139.5866;receitas
+Dep. federal;2018;1.2756;0.1174;0;7461;258.0815;receitas
+Dep. federal;2022;0.7264;0.0645;0;9402;106.7671;receitas
+Senador;2018;0.6325;0.3629;0.0931;302;88.2381;receitas
+Senador;2022;1.1754;0.4088;0.008;205;223.9448;receitas
+Governador;2018;0.2662;0.2973;0.3787;183;30.5035;receitas
+Governador;2022;0.9039;0.4577;0.059;202;146.912;receitas

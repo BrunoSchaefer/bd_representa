@@ -1,0 +1,13 @@
+﻿esfera;tipo;centro-direita;centro-esquerda;direita;esquerda;extrema direita;extrema esquerda
+Nacional;Aparato;40.0579;42.1224;46.0251;45.7341;41.8418;57.4634
+Nacional;Aparato: pessoal;7.1544;10.8811;11.5384;8.2029;6.9965;5.3242
+Nacional;Eleições;3.5419;6.0835;2.8618;4.0427;2.8551;7.8843
+Nacional;Transferências;51.6701;47.3258;45.791;44.5536;53.9745;20.465
+Estadual;Aparato;58.0208;53.565;54.4004;61.6792;60.005;69.2057
+Estadual;Aparato: pessoal;12.5215;9.6774;9.7813;13.4252;10.604;3.1534
+Estadual;Eleições;11.518;10.7438;10.4968;10.5558;12.4138;3.9487
+Estadual;Transferências;22.6045;26.8861;27.8875;21.3174;20.7005;12.1729
+Municipal;Aparato;68.8679;55.9194;61.842;62.7949;68.9268;77.6797
+Municipal;Aparato: pessoal;9.0213;4.6319;6.6661;9.2959;8.7941;5.4064
+Municipal;Eleições;11.5443;15.2727;15.708;13.1498;13.6742;4.0366
+Municipal;Transferências;12.7087;20.7215;14.8243;13.0619;14.0933;13.3219

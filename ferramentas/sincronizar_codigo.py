@@ -13,6 +13,8 @@ from pathlib import Path
 src, dst = Path(sys.argv[1]), Path(sys.argv[2])
 EXT_TEXTO = {".R", ".Rmd", ".md", ".log", ".txt", ".Rproj"}
 IGNORAR = ("_arquivo", ".Rproj.user", "dados_brutos", "bancos")
+ANALISES = "4 Análises exploratórias"
+EXT_RESULTADOS = {".csv", ".png", ".xlsx", ".pdf", ".svg"}  # figuras e tabelas agregadas
 
 BILLING = re.compile(r'set_billing_id\([ \t]*"[^"\r\n]*"[ \t]*\)[ \t]*(##[^\r\n]*)?')
 CAMINHO = re.compile(re.escape(str(src).replace("\\", "/")), re.I)
@@ -44,7 +46,19 @@ for p in src.rglob("*"):
         destino.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(p, destino)
         n += 1
+    elif rel.parts[0] == ANALISES and p.suffix.lower() in EXT_RESULTADOS:
+        destino.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(p, destino)
+        n += 1
 print(f"{n} arquivos sincronizados")
+
+# análises exploratórias: o repositório espelha a pasta do Drive (remove o que saiu de lá)
+removidos = []
+for f in (dst / ANALISES).rglob("*") if (dst / ANALISES).exists() else []:
+    if f.is_file() and not (src / f.relative_to(dst)).exists():
+        f.unlink(); removidos.append(str(f.relative_to(dst)))
+if removidos:
+    print("removidos (não existem mais no Drive):", removidos)
 
 # conferência: nada do projeto privado pode sobrar
 sobras = [str(f) for f in dst.rglob("*") if f.is_file() and f.suffix in EXT_TEXTO

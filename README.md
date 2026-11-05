@@ -81,6 +81,7 @@ Os **dados brutos** do TSE (~40 GB) não são redistribuídos. Os códigos da et
    1a Partidos  2a Eleições  3a Socioeconômico  5a Validação
 2 Agregação dos dados/                  Etapa 2 – junção dos bancos
 3 Produtos finais/                      Etapa 3 – bancos finais e dicionários
+4 Análises exploratórias/               análises com os bancos finais (bd_representa_analise.R) e seus resultados (Figuras e tabelas/)
 docs/                                   página pública de visualização (GitHub Pages)
 ferramentas/                            scripts de publicação (pseudonimização, agregados do site)
 ```

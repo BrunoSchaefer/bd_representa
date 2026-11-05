@@ -1,0 +1,31 @@
+﻿esfera;ANO;tipo;n_orgaos;turnover_prop;turnover_prop_decisao;turnover_prop_mulheres;turnover_prop_homens
+Nacional;2016;Ano de eleição municipal;15;10.1525;20;11.9596;10.0061
+Nacional;2017;Pós-eleição municipal;27;7.0326;5.4545;4.5683;6.9846
+Nacional;2018;Ano de eleição geral;28;25.4294;29.1667;26.1513;25.079
+Nacional;2019;Pós-eleição geral;26;24.1732;17.8571;23.8025;23.7517
+Nacional;2020;Ano de eleição municipal;25;16.3273;8.3333;16.5343;16.447
+Nacional;2021;Pós-eleição municipal;26;9.3375;4.5455;9.7193;9.1973
+Nacional;2022;Ano de eleição geral;24;29.0579;11.5079;30.7497;28.5785
+Nacional;2023;Pós-eleição geral;23;26.1397;8.7719;25.9821;26.4755
+Nacional;2024;Ano de eleição municipal;22;14.4507;19.6078;16.5458;14.8102
+Nacional;2025;Pós-eleição municipal;24;10.6143;11.8519;10.7864;10.5576
+Estadual;2016;Ano de eleição municipal;366;19.1844;16.5062;17.466;19.2691
+Estadual;2017;Pós-eleição municipal;584;14.7671;16.8964;15.6415;14.321
+Estadual;2018;Ano de eleição geral;595;39.2397;32.6078;38.6063;38.7077
+Estadual;2019;Pós-eleição geral;525;27.3055;25.1342;26.8086;27.2143
+Estadual;2020;Ano de eleição municipal;533;28.0114;19.1937;27.0767;27.8851
+Estadual;2021;Pós-eleição municipal;651;18.1756;15.6771;18.2892;17.6519
+Estadual;2022;Ano de eleição geral;557;39.659;31.5078;37.9392;39.6835
+Estadual;2023;Pós-eleição geral;510;27.2506;23.4848;27.0828;26.7607
+Estadual;2024;Ano de eleição municipal;514;33.3857;26.807;33.4587;32.8197
+Estadual;2025;Pós-eleição municipal;539;21.2346;17.8026;20.6895;20.6847
+Municipal;2016;Ano de eleição municipal;60136;5.7583;6.757;5.5677;5.6958
+Municipal;2017;Pós-eleição municipal;81498;6.7966;7.6346;6.4373;6.7453
+Municipal;2018;Ano de eleição geral;63294;10.9503;10.7988;10.7118;10.751
+Municipal;2019;Pós-eleição geral;51505;15.0065;14.8069;14.9846;14.79
+Municipal;2020;Ano de eleição municipal;52206;24.7411;24.3372;25.0106;24.231
+Municipal;2021;Pós-eleição municipal;60275;12.6732;12.9563;11.7966;12.778
+Municipal;2022;Ano de eleição geral;44207;8.5946;8.6615;8.3948;8.5571
+Municipal;2023;Pós-eleição geral;33293;18.1974;17.6715;18.4507;17.8461
+Municipal;2024;Ano de eleição municipal;36754;26.4061;26.264;26.2788;26.1209
+Municipal;2025;Pós-eleição municipal;47813;13.8869;13.8956;13.5983;13.7797

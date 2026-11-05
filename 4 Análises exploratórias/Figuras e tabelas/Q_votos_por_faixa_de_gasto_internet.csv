@@ -1,0 +1,107 @@
+﻿cargo_rot;ano;faixa;n;media_pct_votos
+Vereador;2020;0;287653;0.6338
+Vereador;2020;0-1;10758;0.3421
+Vereador;2020;1-5;6596;0.8351
+Vereador;2020;5-10;2385;1.3993
+Vereador;2020;10-25;1976;1.6892
+Vereador;2020;25-50;988;2.0028
+Vereador;2020;50+;1299;2.5279
+Vereador;2024;0;253734;0.9024
+Vereador;2024;0-1;15217;0.4738
+Vereador;2024;1-5;9861;1.0983
+Vereador;2024;5-10;3092;1.6665
+Vereador;2024;10-25;2607;1.9848
+Vereador;2024;25-50;1319;2.5655
+Vereador;2024;50+;1573;2.9221
+Prefeito;2020;0;4782;21.5484
+Prefeito;2020;0-1;241;6.7322
+Prefeito;2020;1-5;649;11.9499
+Prefeito;2020;5-10;576;17.8333
+Prefeito;2020;10-25;1125;23.5986
+Prefeito;2020;25-50;1089;30.6266
+Prefeito;2020;50+;2451;39.1916
+Prefeito;2024;0;3228;30.2366
+Prefeito;2024;0-1;148;8.3049
+Prefeito;2024;1-5;382;14.2334
+Prefeito;2024;5-10;410;21.9311
+Prefeito;2024;10-25;1014;28.7988
+Prefeito;2024;25-50;1322;35.9285
+Prefeito;2024;50+;2725;41.8897
+Dep. estadual/distrital;2018;0;13407;0.0872
+Dep. estadual/distrital;2018;0-1;2897;0.2778
+Dep. estadual/distrital;2018;1-5;544;0.7512
+Dep. estadual/distrital;2018;5-10;64;1.0805
+Dep. estadual/distrital;2018;10-25;23;1.3113
+Dep. estadual/distrital;2018;25-50;4;1.6072
+Dep. estadual/distrital;2022;0;10123;0.0747
+Dep. estadual/distrital;2022;0-1;5005;0.2366
+Dep. estadual/distrital;2022;1-5;613;0.8499
+Dep. estadual/distrital;2022;5-10;49;1.1826
+Dep. estadual/distrital;2022;10-25;9;1.0733
+Dep. estadual/distrital;2026;0;6665;0.104
+Dep. estadual/distrital;2026;0-1;3513;0.3125
+Dep. estadual/distrital;2026;1-5;589;1.0667
+Dep. estadual/distrital;2026;5-10;51;1.6448
+Dep. estadual/distrital;2026;10-25;18;1.7625
+Dep. estadual/distrital;2026;25-50;4;1.301
+Dep. federal;2018;0;5302;0.1457
+Dep. federal;2018;0-1;1777;0.401
+Dep. federal;2018;1-5;427;1.5496
+Dep. federal;2018;5-10;75;2.3958
+Dep. federal;2018;10-25;40;3.7233
+Dep. federal;2018;25-50;6;5.8341
+Dep. federal;2018;50+;1;4.9127
+Dep. federal;2022;0;5111;0.0845
+Dep. federal;2022;0-1;3673;0.2946
+Dep. federal;2022;1-5;584;1.4606
+Dep. federal;2022;5-10;64;2.4966
+Dep. federal;2022;10-25;21;2.9618
+Dep. federal;2022;25-50;2;0.5472
+Dep. federal;2026;0;3775;0.1018
+Dep. federal;2026;0-1;2715;0.3555
+Dep. federal;2026;1-5;445;1.877
+Dep. federal;2026;5-10;73;3.3404
+Dep. federal;2026;10-25;39;4.4045
+Dep. federal;2026;25-50;4;4.3687
+Senador;2018;0;100;2.8756
+Senador;2018;0-1;42;5.387
+Senador;2018;1-5;44;7.574
+Senador;2018;5-10;33;14.0651
+Senador;2018;10-25;51;17.1466
+Senador;2018;25-50;24;14.3319
+Senador;2018;50+;11;15.4849
+Senador;2022;0;45;0.3339
+Senador;2022;0-1;34;2.4682
+Senador;2022;1-5;28;7.415
+Senador;2022;5-10;19;17.0067
+Senador;2022;10-25;35;20.6413
+Senador;2022;25-50;31;27.9195
+Senador;2022;50+;13;37.1046
+Senador;2026;0;91;1.3601
+Senador;2026;0-1;29;2.336
+Senador;2026;1-5;37;7.1343
+Senador;2026;5-10;24;13.6269
+Senador;2026;10-25;57;18.7675
+Senador;2026;25-50;32;20.7864
+Senador;2026;50+;7;26.0786
+Governador;2018;0;49;4.2471
+Governador;2018;0-1;32;4.236
+Governador;2018;1-5;15;9.4635
+Governador;2018;5-10;19;23.6121
+Governador;2018;10-25;30;18.9163
+Governador;2018;25-50;20;28.0389
+Governador;2018;50+;18;35.2343
+Governador;2022;0;53;1.0682
+Governador;2022;0-1;26;0.5618
+Governador;2022;1-5;23;2.6408
+Governador;2022;5-10;20;13.9275
+Governador;2022;10-25;39;23.6274
+Governador;2022;25-50;32;31.7189
+Governador;2022;50+;9;39.2238
+Governador;2026;0;58;0.2539
+Governador;2026;0-1;27;1.1885
+Governador;2026;1-5;11;10.0381
+Governador;2026;5-10;6;22.6872
+Governador;2026;10-25;19;21.8813
+Governador;2026;25-50;31;39.3681
+Governador;2026;50+;17;45.3227
